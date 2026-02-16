@@ -16,6 +16,17 @@ class NewsFetcher:
         self.subscription_manager = SubscriptionManager()
         self.news_dir = settings.NEWS_DIR
         os.makedirs(self.news_dir, exist_ok=True)
+        
+        # RSSHub实例列表，按优先级排序
+        self.rsshub_instances = [
+            "https://rss.owo.nz",
+            "https://rsshub.rssforever.com",
+            "https://hub.slarker.me",
+            "https://rsshub.pseudoyu.com",
+            "https://rsshub.ktachibana.party",
+            "https://rsshub.umzzz.com",
+            "https://rss.spriple.org"
+        ]
     
     def fetch_news(self) -> List[Dict[str, Any]]:
         """抓取所有订阅源的新闻"""
@@ -49,175 +60,199 @@ class NewsFetcher:
     
     def _fetch_from_subscription(self, subscription: Dict[str, Any]) -> List[Dict[str, Any]]:
         """从单个订阅源抓取新闻"""
-        url = subscription['url']
+        original_url = subscription['url']
+        
+        # 检测是否是RSSHub URL
+        is_rsshub = self._is_rsshub_url(original_url)
+        
+        # 准备要尝试的URL列表
+        urls_to_try = [original_url]
+        
+        # 如果是RSSHub URL，添加其他实例的URL
+        if is_rsshub:
+            print(f"检测到RSSHub URL: {original_url}")
+            # 为每个RSSHub实例创建一个URL
+            for instance in self.rsshub_instances:
+                # 跳过原始实例
+                if instance in original_url:
+                    continue
+                # 创建新的URL
+                new_url = self._replace_rsshub_instance(original_url, instance)
+                urls_to_try.append(new_url)
+            print(f"准备尝试 {len(urls_to_try)} 个RSSHub实例")
         
         # 使用feedparser抓取RSS内容，添加超时和重试机制
         max_retries = 3
         retry_delay = 2  # 秒
         
-        for attempt in range(max_retries):
-            try:
-                print(f"抓取订阅源 {subscription['name']} (尝试 {attempt+1}/{max_retries})...")
-                
-                # 确保导入feedparser
-                import feedparser
-                
-                # 优先使用feedparser直接解析URL（更可靠）
+        # 尝试每个URL
+        for url in urls_to_try:
+            print(f"\n尝试使用URL: {url}")
+            
+            for attempt in range(max_retries):
                 try:
-                    print(f"尝试使用feedparser直接解析URL...")
+                    print(f"抓取订阅源 {subscription['name']} (尝试 {attempt+1}/{max_retries})...")
                     
-                    # 设置feedparser的超时和请求头
-                    import socket
-                    socket.setdefaulttimeout(30)  # 30秒超时
+                    # 确保导入feedparser
+                    import feedparser
                     
-                    # 为feedparser添加请求头
-                    feedparser.USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
-                    
-                    # 添加请求头
-                    request_headers = {
-                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                        'Connection': 'keep-alive'
-                    }
-                    
-                    # 为 rsshub 添加特殊处理
-                    if 'rsshub' in url:
-                        print("为 rsshub 添加特殊请求头...")
-                        request_headers.update({
-                            'Referer': 'https://rsshub.app/',
-                            'Origin': 'https://rsshub.app'
-                        })
-                    
-                    # 使用feedparser抓取RSS内容
-                    feed = feedparser.parse(url, request_headers=request_headers)
-                    
-                    # 检查解析结果
-                    if len(feed.entries) > 0:
-                        print(f"✅ feedparser直接解析成功，获取到 {len(feed.entries)} 条新闻")
-                    else:
-                        # 如果feedparser直接解析失败，尝试使用requests获取内容
-                        print(f"⚠️ feedparser直接解析获取到 {len(feed.entries)} 条新闻，尝试使用requests获取...")
+                    # 优先使用feedparser直接解析URL（更可靠）
+                    try:
+                        print(f"尝试使用feedparser直接解析URL...")
                         
-                        # 创建SSL上下文，忽略一些常见的SSL验证问题
-                        import ssl
-                        ssl_context = ssl.create_default_context()
-                        ssl_context.check_hostname = False
-                        ssl_context.verify_mode = ssl.CERT_NONE
+                        # 设置feedparser的超时和请求头
+                        import socket
+                        socket.setdefaulttimeout(30)  # 30秒超时
                         
-                        # 添加浏览器 User-Agent 和必要的请求头
-                        headers = {
+                        # 为feedparser添加请求头
+                        feedparser.USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
+                        
+                        # 添加请求头
+                        request_headers = {
                             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
                             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-                            'Connection': 'keep-alive',
-                            'Upgrade-Insecure-Requests': '1'
+                            'Connection': 'keep-alive'
                         }
                         
                         # 为 rsshub 添加特殊处理
                         if 'rsshub' in url:
-                            print("尝试获取 rsshub 内容...")
-                            headers['Referer'] = 'https://rsshub.app/'
-                            headers['Origin'] = 'https://rsshub.app'
+                            print("为 rsshub 添加特殊请求头...")
+                            request_headers.update({
+                                'Referer': 'https://rsshub.app/',
+                                'Origin': 'https://rsshub.app'
+                            })
                         
-                        # 使用requests获取内容（禁用压缩以避免乱码问题）
-                        response = requests.get(url, timeout=30, verify=False, headers=headers, stream=True)
+                        # 使用feedparser抓取RSS内容
+                        feed = feedparser.parse(url, request_headers=request_headers)
                         
-                        # 详细调试信息
-                        print(f"请求状态码: {response.status_code}")
-                        
-                        response.raise_for_status()
-                        
-                        # 读取原始内容并手动处理
-                        content = response.raw.read()
-                        
-                        # 尝试不同的编码
-                        encodings = ['utf-8', 'gbk', 'iso-8859-1']
-                        parsed_content = None
-                        
-                        for encoding in encodings:
-                            try:
-                                parsed_content = content.decode(encoding)
-                                print(f"✅ 成功使用 {encoding} 解码内容")
-                                break
-                            except UnicodeDecodeError:
-                                print(f"❌ 使用 {encoding} 解码失败")
-                                continue
-                        
-                        if parsed_content:
-                            # 使用feedparser解析内容
-                            feed = feedparser.parse(parsed_content)
+                        # 检查解析结果
+                        if len(feed.entries) > 0:
+                            print(f"✅ feedparser直接解析成功，获取到 {len(feed.entries)} 条新闻")
                         else:
-                            print("❌ 所有编码尝试都失败")
-                            feed = {}
+                            # 如果feedparser直接解析失败，尝试使用requests获取内容
+                            print(f"⚠️ feedparser直接解析获取到 {len(feed.entries)} 条新闻，尝试使用requests获取...")
+                            
+                            # 创建SSL上下文，忽略一些常见的SSL验证问题
+                            import ssl
+                            ssl_context = ssl.create_default_context()
+                            ssl_context.check_hostname = False
+                            ssl_context.verify_mode = ssl.CERT_NONE
+                            
+                            # 添加浏览器 User-Agent 和必要的请求头
+                            headers = {
+                                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+                                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+                                'Connection': 'keep-alive',
+                                'Upgrade-Insecure-Requests': '1'
+                            }
+                            
+                            # 为 rsshub 添加特殊处理
+                            if 'rsshub' in url:
+                                print("尝试获取 rsshub 内容...")
+                                headers['Referer'] = 'https://rsshub.app/'
+                                headers['Origin'] = 'https://rsshub.app'
+                            
+                            # 使用requests获取内容（禁用压缩以避免乱码问题）
+                            response = requests.get(url, timeout=30, verify=False, headers=headers, stream=True)
+                            
+                            # 详细调试信息
+                            print(f"请求状态码: {response.status_code}")
+                            
+                            response.raise_for_status()
+                            
+                            # 读取原始内容并手动处理
+                            content = response.raw.read()
+                            
+                            # 尝试不同的编码
+                            encodings = ['utf-8', 'gbk', 'iso-8859-1']
+                            parsed_content = None
+                            
+                            for encoding in encodings:
+                                try:
+                                    parsed_content = content.decode(encoding)
+                                    print(f"✅ 成功使用 {encoding} 解码内容")
+                                    break
+                                except UnicodeDecodeError:
+                                    print(f"❌ 使用 {encoding} 解码失败")
+                                    continue
+                            
+                            if parsed_content:
+                                # 使用feedparser解析内容
+                                feed = feedparser.parse(parsed_content)
+                            else:
+                                print("❌ 所有编码尝试都失败")
+                                feed = {}
+                    except Exception as e:
+                        # 如果获取内容失败，回退到简单的feedparser方法
+                        print(f"❌ 获取内容失败，使用简单feedparser方法: {e}")
+                        feed = feedparser.parse(url)
+                    
+                    # 检查是否有错误
+                    if 'bozo_exception' in feed:
+                        bozo_error = feed['bozo_exception']
+                        error_type = type(bozo_error).__name__
+                        print(f"❌ 解析警告 {url}: [{error_type}] {bozo_error}")
+                    
+                    news_items = []
+                    for entry in feed.entries:
+                        news_item = {
+                            "id": self._generate_id(entry.link if 'link' in entry else entry.id),
+                            "title": entry.title if 'title' in entry else "",
+                            "url": entry.link if 'link' in entry else "",
+                            "content": self._extract_content(entry),
+                            "source": subscription['name'],
+                            "published_at": self._parse_published_date(entry),
+                            "collected_at": datetime.now().isoformat()
+                        }
+                        news_items.append(news_item)
+                    
+                    if len(news_items) > 0:
+                        print(f"✅ 成功抓取 {len(news_items)} 条新闻 from {subscription['name']} (URL: {url})")
+                        return news_items
+                    else:
+                        print(f"❌ 抓取订阅源 {subscription['name']} 失败：未获取到新闻")
+                
+                except socket.timeout:
+                    print(f"❌ 抓取超时 {url}，{retry_delay}秒后重试...")
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # 指数退避
+                    
+                except requests.exceptions.RequestException as e:
+                    error_type = type(e).__name__
+                    print(f"❌ 网络请求失败 {url}: [{error_type}] {e}")
+                    if attempt < max_retries - 1:
+                        print(f"{retry_delay}秒后重试...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                    else:
+                        print(f"❌ 所有尝试都失败，尝试下一个URL")
+                        break
+                        
+                except ssl.SSLError as e:
+                    error_type = type(e).__name__
+                    print(f"❌ SSL错误 {url}: [{error_type}] {e}")
+                    if attempt < max_retries - 1:
+                        print(f"{retry_delay}秒后重试...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                    else:
+                        print(f"❌ 所有尝试都失败，尝试下一个URL")
+                        break
+                        
                 except Exception as e:
-                    # 如果获取内容失败，回退到简单的feedparser方法
-                    print(f"❌ 获取内容失败，使用简单feedparser方法: {e}")
-                    feed = feedparser.parse(url)
-                
-                # 检查是否有错误
-                if 'bozo_exception' in feed:
-                    bozo_error = feed['bozo_exception']
-                    error_type = type(bozo_error).__name__
-                    print(f"❌ 解析警告 {url}: [{error_type}] {bozo_error}")
-                
-                news_items = []
-                for entry in feed.entries:
-                    news_item = {
-                        "id": self._generate_id(entry.link if 'link' in entry else entry.id),
-                        "title": entry.title if 'title' in entry else "",
-                        "url": entry.link if 'link' in entry else "",
-                        "content": self._extract_content(entry),
-                        "source": subscription['name'],
-                        "published_at": self._parse_published_date(entry),
-                        "collected_at": datetime.now().isoformat()
-                    }
-                    news_items.append(news_item)
-                
-                if len(news_items) > 0:
-                    print(f"✅ 成功抓取 {len(news_items)} 条新闻 from {subscription['name']}")
-                else:
-                    print(f"❌ 抓取订阅源 {subscription['name']} 失败：未获取到新闻")
-                return news_items
-                
-            except socket.timeout:
-                print(f"❌ 抓取超时 {url}，{retry_delay}秒后重试...")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # 指数退避
-                
-            except requests.exceptions.RequestException as e:
-                error_type = type(e).__name__
-                print(f"❌ 网络请求失败 {url}: [{error_type}] {e}")
-                if attempt < max_retries - 1:
-                    print(f"{retry_delay}秒后重试...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
-                else:
-                    print(f"❌ 所有尝试都失败，跳过此订阅源")
-                    return []
-                    
-            except ssl.SSLError as e:
-                error_type = type(e).__name__
-                print(f"❌ SSL错误 {url}: [{error_type}] {e}")
-                if attempt < max_retries - 1:
-                    print(f"{retry_delay}秒后重试...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
-                else:
-                    print(f"❌ 所有尝试都失败，跳过此订阅源")
-                    return []
-                    
-            except Exception as e:
-                error_type = type(e).__name__
-                print(f"❌ 抓取失败 {url}: [{error_type}] {e}")
-                if attempt < max_retries - 1:
-                    print(f"{retry_delay}秒后重试...")
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
-                else:
-                    print(f"❌ 所有尝试都失败，跳过此订阅源")
-                    return []
+                    error_type = type(e).__name__
+                    print(f"❌ 抓取失败 {url}: [{error_type}] {e}")
+                    if attempt < max_retries - 1:
+                        print(f"{retry_delay}秒后重试...")
+                        time.sleep(retry_delay)
+                        retry_delay *= 2
+                    else:
+                        print(f"❌ 所有尝试都失败，尝试下一个URL")
+                        break
         
+        print(f"❌ 所有URL都尝试失败，跳过此订阅源")
         return []
     
     def _extract_content(self, entry: Any) -> str:
@@ -362,6 +397,27 @@ class NewsFetcher:
                         print(f"删除过期新闻文件: {filename}")
                 except Exception as e:
                     print(f"清理新闻文件失败 {filename}: {e}")
+    
+    def _is_rsshub_url(self, url: str) -> bool:
+        """检测URL是否是RSSHub URL"""
+        for instance in self.rsshub_instances:
+            if instance in url:
+                return True
+        return False
+    
+    def _replace_rsshub_instance(self, url: str, new_instance: str) -> str:
+        """替换URL中的RSSHub实例"""
+        # 移除原有的RSSHub实例前缀
+        for instance in self.rsshub_instances:
+            if instance in url:
+                path = url.replace(instance, '')
+                # 确保路径以/开头
+                if not path.startswith('/'):
+                    path = '/' + path
+                # 组合新的URL
+                return new_instance + path
+        # 如果不是RSSHub URL，直接返回原URL
+        return url
 
 
 if __name__ == "__main__":
