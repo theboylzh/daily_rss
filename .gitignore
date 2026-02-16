@@ -1,0 +1,33 @@
+# 环境文件
+.env
+
+# 数据文件
+data/
+
+# Python文件
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 编辑器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 依赖文件
+*.egg-info/
+dist/
+build/
+
+# 测试文件
+.pytest_cache/
+.coverage
+
+# 日志文件
+*.log
