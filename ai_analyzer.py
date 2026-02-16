@@ -332,17 +332,6 @@ class AIAnalyzer:
         print(f"使用 {len(news_titles)} 条新闻进行分析...")
         
         try:
-            # 使用OpenAI SDK调用DeepSeek API
-            from openai import OpenAI
-            
-            # 初始化客户端
-            client = OpenAI(
-                api_key=api_key,
-                base_url=api_url
-            )
-            
-            print(f"初始化OpenAI客户端，base_url: {api_url}")
-            
             # 构建提示词
             prompt = "分析以下新闻：\n\n"
             for i, title in enumerate(news_titles):
@@ -350,34 +339,55 @@ class AIAnalyzer:
             prompt += "\n\n请为每条新闻提供：摘要、关键词、情感分析。"
             prompt += "\n使用JSON格式返回，每条新闻一个对象，放在数组中。"
             
-            # 调用API
-            print("发送API请求...")
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
+            # 直接使用HTTP请求调用API，避免OpenAI客户端的proxies问题
+            import httpx
+            import json
+            
+            print("发送HTTP请求到AI API...")
+            print(f"API URL: {api_url}")
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+            
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [
                     {"role": "system", "content": "你是一个专业的新闻分析师"},
                     {"role": "user", "content": prompt}
                 ],
-                stream=False,
-                max_tokens=4096
-            )
+                "stream": False,
+                "max_tokens": 4096
+            }
             
-            print(f"API调用成功，响应ID: {response.id}")
+            # 创建自定义的HTTP客户端，不使用proxies参数
+            with httpx.Client() as client:
+                response = client.post(
+                    api_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0
+                )
             
-            # 提取分析结果
-            analysis_content = response.choices[0].message.content
+            print(f"HTTP响应状态: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"API调用失败，状态码: {response.status_code}")
+                print(f"响应内容: {response.text}")
+                # 备用方案：生成模拟分析结果
+                return self._generate_fallback_analysis(news_items)
+            
+            # 解析响应
+            response_data = response.json()
+            analysis_content = response_data['choices'][0]['message']['content']
             print(f"获取到的内容: {analysis_content[:200]}...")
-            
-            # 解析JSON响应
-            import json
-            import re
-            
-            print(f"原始内容: {analysis_content[:300]}...")
             
             # 清理Markdown代码块
             clean_content = analysis_content.strip()
             
             # 使用正则表达式提取JSON内容
+            import re
             json_match = re.search(r'```(?:json)?\n(.*?)\n```', clean_content, re.DOTALL)
             if json_match:
                 clean_content = json_match.group(1).strip()
@@ -416,6 +426,8 @@ class AIAnalyzer:
                 
         except Exception as e:
             print(f"分析失败: {e}")
+            import traceback
+            traceback.print_exc()
             # 备用方案：生成模拟分析结果
             return self._generate_fallback_analysis(news_items)
     
@@ -481,32 +493,54 @@ class AIAnalyzer:
     def _first_layer_analysis(self, news_markdown: str) -> str:
         """第一层整体摘要分析"""
         try:
-            from openai import OpenAI
-            
-            # 初始化客户端
-            client = OpenAI(
-                api_key=settings.AI_API_KEY,
-                base_url=settings.AI_API_URL
-            )
+            import httpx
+            import json
             
             # 构建提示词
             prompt = self.prompts["first_layer"] + "\n\n" + news_markdown
             
-            # 调用API
+            # 直接使用HTTP请求调用API
             print("发送第一层分析请求...")
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.AI_API_KEY}"
+            }
+            
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [
                     {"role": "system", "content": "你是一个专业的新闻分析师"},
                     {"role": "user", "content": prompt}
                 ],
-                stream=False,
-                max_tokens=4096
-            )
+                "stream": False,
+                "max_tokens": 4096
+            }
             
-            return response.choices[0].message.content
+            # 创建自定义的HTTP客户端，不使用proxies参数
+            with httpx.Client() as client:
+                response = client.post(
+                    settings.AI_API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0
+                )
+            
+            print(f"HTTP响应状态: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"API调用失败，状态码: {response.status_code}")
+                print(f"响应内容: {response.text}")
+                # 备用方案
+                return "# 整体摘要分析\n\n## 整体摘要\n分析失败，使用备用方案。\n\n## 新闻分类\n- 综合新闻\n- 未分类\n\n## 关键事件\n- 分析失败"
+            
+            # 解析响应
+            response_data = response.json()
+            return response_data['choices'][0]['message']['content']
         except Exception as e:
             print(f"第一层分析失败: {e}")
+            import traceback
+            traceback.print_exc()
             # 备用方案
             return "# 整体摘要分析\n\n## 整体摘要\n分析失败，使用备用方案。\n\n## 新闻分类\n- 综合新闻\n- 未分类\n\n## 关键事件\n- 分析失败"
     
@@ -613,13 +647,8 @@ class AIAnalyzer:
     def _third_layer_analysis(self, first_layer_result: str, second_layer_results: List[str]) -> str:
         """第三层综合分析"""
         try:
-            from openai import OpenAI
-            
-            # 初始化客户端
-            client = OpenAI(
-                api_key=settings.AI_API_KEY,
-                base_url=settings.AI_API_URL
-            )
+            import httpx
+            import json
             
             # 构建提示词
             prompt = self.prompts["third_layer"] + "\n\n"
@@ -628,21 +657,48 @@ class AIAnalyzer:
             for i, result in enumerate(second_layer_results):
                 prompt += f"## 事件 {i+1} 分析\n" + result + "\n\n"
             
-            # 调用API
+            # 直接使用HTTP请求调用API
             print("发送第三层分析请求...")
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.AI_API_KEY}"
+            }
+            
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [
                     {"role": "system", "content": "你是一个专业的新闻分析师"},
                     {"role": "user", "content": prompt}
                 ],
-                stream=False,
-                max_tokens=4096
-            )
+                "stream": False,
+                "max_tokens": 4096
+            }
             
-            return response.choices[0].message.content
+            # 创建自定义的HTTP客户端，不使用proxies参数
+            with httpx.Client() as client:
+                response = client.post(
+                    settings.AI_API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0
+                )
+            
+            print(f"HTTP响应状态: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"API调用失败，状态码: {response.status_code}")
+                print(f"响应内容: {response.text}")
+                # 备用方案
+                return "# 综合分析\n\n分析失败，使用备用方案。"
+            
+            # 解析响应
+            response_data = response.json()
+            return response_data['choices'][0]['message']['content']
         except Exception as e:
             print(f"第三层分析失败: {e}")
+            import traceback
+            traceback.print_exc()
             # 备用方案
             return "# 综合分析\n\n分析失败，使用备用方案。"
     
@@ -898,26 +954,51 @@ class AIAnalyzer:
                     if result['content']:
                         enhanced_prompt += f"   摘要：{result['content'][:200]}...\n"
             
-            # 调用AI进行分析
-            from openai import OpenAI
-            client = OpenAI(
-                api_key=settings.AI_API_KEY,
-                base_url=settings.AI_API_URL
-            )
+            # 直接使用HTTP请求调用API
+            import httpx
+            import json
             
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
+            print("发送增强事件分析请求...")
+            
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {settings.AI_API_KEY}"
+            }
+            
+            payload = {
+                "model": "deepseek-chat",
+                "messages": [
                     {"role": "system", "content": "你是一个专业的新闻分析师"},
                     {"role": "user", "content": enhanced_prompt}
                 ],
-                stream=False,
-                max_tokens=4096
-            )
+                "stream": False,
+                "max_tokens": 4096
+            }
             
-            return response.choices[0].message.content
+            # 创建自定义的HTTP客户端，不使用proxies参数
+            with httpx.Client() as client:
+                response = client.post(
+                    settings.AI_API_URL,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0
+                )
+            
+            print(f"HTTP响应状态: {response.status_code}")
+            
+            if response.status_code != 200:
+                print(f"API调用失败，状态码: {response.status_code}")
+                print(f"响应内容: {response.text}")
+                # 回退到普通分析
+                return self._analyze_single_event(event)
+            
+            # 解析响应
+            response_data = response.json()
+            return response_data['choices'][0]['message']['content']
         except Exception as e:
             print(f"增强事件分析失败: {e}")
+            import traceback
+            traceback.print_exc()
             # 回退到普通分析
             return self._analyze_single_event(event)
 
