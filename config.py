@@ -27,6 +27,11 @@ class Settings(BaseSettings):
     AI_MODEL: str = "deepseek-chat"  # 默认使用DeepSeek模型
     AI_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
     
+    # 第三层分析配置
+    THIRD_LAYER_TIMEOUT: int = 45  # 超时时间（秒）
+    THIRD_LAYER_RETRIES: int = 3  # 重试次数
+    THIRD_LAYER_RETRY_DELAY: int = 1  # 初始重试延迟（秒）
+    
     # Tavily配置
     TAVILY_API_KEY: str = ""
     

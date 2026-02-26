@@ -52,10 +52,15 @@ class NewsFetcher:
         # 过滤24小时内的新闻
         recent_news = self._filter_recent_news(unique_news)
         
+        # 再次验证新闻数量
+        if not recent_news:
+            print("警告: 没有24小时内的新闻")
+        else:
+            print(f"成功获取 {len(recent_news)} 条24小时内的新闻")
+        
         # 存储新闻
         self._save_news(recent_news)
         
-        print(f"抓取完成，共获取 {len(recent_news)} 条新闻")
         return recent_news
     
     def _fetch_from_subscription(self, subscription: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -403,12 +408,11 @@ class NewsFetcher:
                     recent_news.append(news)
                     print(f"✅ 新闻 {i+1} 在24小时内")
                 else:
-                    print(f"❌ 新闻 {i+1} 超过24小时")
+                    print(f"❌ 新闻 {i+1} 超过24小时，过滤掉")
             except Exception as e:
                 print(f"日期比较失败 {i+1}: {e}")
-                # 如果日期解析失败，默认保留
-                recent_news.append(news)
-                print(f"⚠️  新闻 {i+1} 日期解析失败，默认保留")
+                # 如果日期解析失败，默认不保留，过滤掉
+                print(f"⚠️  新闻 {i+1} 日期解析失败，过滤掉")
         
         print(f"\n过滤后保留 {len(recent_news)}/{len(news_items)} 条新闻")
         return recent_news

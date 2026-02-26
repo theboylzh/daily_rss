@@ -235,213 +235,7 @@ class AIAnalyzer:
         print("每月新闻分析完成")
         return monthly_report
     
-    def _parallel_analysis(self, news_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """并行分析新闻"""
-        # 限制并行数量，避免API调用过于频繁
-        max_workers = min(multiprocessing.cpu_count(), 4)
-        
-        print(f"使用 {max_workers} 个进程进行并行分析...")
-        
-        # 分批次处理新闻
-        batch_size = len(news_items) // max_workers + 1
-        batches = [news_items[i:i+batch_size] for i in range(0, len(news_items), batch_size)]
-        
-        print(f"将 {len(news_items)} 条新闻分成 {len(batches)} 个批次处理")
-        
-        # 使用进程池进行并行分析
-        with multiprocessing.Pool(processes=max_workers) as pool:
-            # 添加进度显示
-            results = []
-            for i, batch_result in enumerate(pool.imap(self._analyze_news_batch, batches)):
-                results.extend(batch_result)
-                print(f"批次 {i+1}/{len(batches)} 分析完成，已分析 {len(results)}/{len(news_items)} 条新闻")
-        
-        print(f"所有批次分析完成，共分析 {len(results)} 条新闻")
-        return results
-    
-    def _analyze_news_batch(self, news_batch: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """分析一批新闻"""
-        results = []
-        for i, news in enumerate(news_batch):
-            try:
-                # 实时反馈
-                print(f"分析新闻 {i+1}/{len(news_batch)}: {news['title'][:50]}...")
-                analysis = self._analyze_single_news(news)
-                results.append(analysis)
-                # 避免API调用过于频繁
-                time.sleep(1)
-            except Exception as e:
-                print(f"分析新闻失败 {news['title'][:50]}...: {e}")
-                # 添加错误信息到分析结果
-                results.append({
-                    "title": news['title'],
-                    "summary": f"分析失败: {str(e)[:100]}",
-                    "keywords": [],
-                    "sentiment": "neutral"
-                })
-        return results
-    
-    def _analyze_single_news(self, news: Dict[str, Any]) -> Dict[str, Any]:
-        """分析单条新闻"""
-        # 调用AI模型API进行分析
-        try:
-            # 实际调用DeepSeek API
-            analysis_results = self._call_ai_model([news])
-            if analysis_results:
-                analysis = analysis_results[0]
-                # 标准化字段名
-                standardized_analysis = {
-                    "title": news['title'],
-                    "summary": analysis.get('summary', analysis.get('摘要', '')),
-                    "keywords": analysis.get('keywords', analysis.get('关键词', [])),
-                    "sentiment": analysis.get('sentiment', analysis.get('情感分析', 'neutral'))
-                }
-                # 确保关键词字段存在
-                if not standardized_analysis['keywords']:
-                    standardized_analysis['keywords'] = self._extract_keywords(news['title'])
-                return standardized_analysis
-            else:
-                raise Exception("分析结果为空")
-        except Exception as e:
-            print(f"API调用失败，使用备用分析: {e}")
-            # 备用方案：使用模拟分析结果
-            return {
-                "title": news['title'],
-                "summary": f"这是关于{news['title']}的分析摘要",
-                "keywords": self._extract_keywords(news['title']),
-                "sentiment": "neutral"
-            }
-    
-    def _call_ai_model(self, news_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """调用AI模型进行批量分析"""
-        api_key = settings.AI_API_KEY
-        api_url = settings.AI_API_URL
-        
-        if not api_key:
-            raise Exception("AI API Key未配置")
-        
-        # 提取新闻标题
-        news_titles = [news['title'] for news in news_items]
-        print(f"准备分析 {len(news_titles)} 条新闻标题...")
-        
-        # 限制新闻数量，避免API限制
-        if len(news_titles) > 10:
-            print(f"新闻数量过多 ({len(news_titles)}条)，只使用前10条进行分析...")
-            news_titles = news_titles[:10]
-        
-        print(f"使用 {len(news_titles)} 条新闻进行分析...")
-        
-        try:
-            # 构建提示词
-            prompt = "分析以下新闻：\n\n"
-            for i, title in enumerate(news_titles):
-                prompt += f"{i+1}. {title}\n"
-            prompt += "\n\n请为每条新闻提供：摘要、关键词、情感分析。"
-            prompt += "\n使用JSON格式返回，每条新闻一个对象，放在数组中。"
-            
-            # 直接使用HTTP请求调用API，避免OpenAI客户端的proxies问题
-            import httpx
-            import json
-            
-            print("发送HTTP请求到AI API...")
-            print(f"API URL: {api_url}")
-            
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            
-            payload = {
-                "model": "deepseek-chat",
-                "messages": [
-                    {"role": "system", "content": "你是一个专业的新闻分析师"},
-                    {"role": "user", "content": prompt}
-                ],
-                "stream": False,
-                "max_tokens": 4096
-            }
-            
-            # 创建自定义的HTTP客户端，不使用proxies参数
-            with httpx.Client() as client:
-                response = client.post(
-                    api_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=30.0
-                )
-            
-            print(f"HTTP响应状态: {response.status_code}")
-            
-            if response.status_code != 200:
-                print(f"API调用失败，状态码: {response.status_code}")
-                print(f"响应内容: {response.text}")
-                # 备用方案：生成模拟分析结果
-                return self._generate_fallback_analysis(news_items)
-            
-            # 解析响应
-            response_data = response.json()
-            analysis_content = response_data['choices'][0]['message']['content']
-            print(f"获取到的内容: {analysis_content[:200]}...")
-            
-            # 清理Markdown代码块
-            clean_content = analysis_content.strip()
-            
-            # 使用正则表达式提取JSON内容
-            import re
-            json_match = re.search(r'```(?:json)?\n(.*?)\n```', clean_content, re.DOTALL)
-            if json_match:
-                clean_content = json_match.group(1).strip()
-                print(f"从Markdown代码块中提取JSON")
-            
-            print(f"清理后的内容: {clean_content[:200]}...")
-            
-            # 尝试解析JSON
-            try:
-                analysis_results = json.loads(clean_content)
-                
-                # 验证结果格式
-                if not isinstance(analysis_results, list):
-                    raise Exception("分析结果格式错误，应为JSON数组")
-                
-                print(f"成功解析 {len(analysis_results)} 条分析结果")
-                return analysis_results
-                
-            except json.JSONDecodeError as e:
-                print(f"JSON解析失败: {e}")
-                # 尝试提取数组部分
-                array_match = re.search(r'\[(.*?)\]', clean_content, re.DOTALL)
-                if array_match:
-                    array_content = '[' + array_match.group(1) + ']'
-                    print(f"尝试提取数组部分: {array_content[:200]}...")
-                    try:
-                        analysis_results = json.loads(array_content)
-                        print(f"成功解析提取的数组，共 {len(analysis_results)} 条结果")
-                        return analysis_results
-                    except:
-                        pass
-                
-                # 备用方案：生成模拟分析结果
-                print("使用备用分析结果")
-                return self._generate_fallback_analysis(news_items)
-                
-        except Exception as e:
-            print(f"分析失败: {e}")
-            import traceback
-            traceback.print_exc()
-            # 备用方案：生成模拟分析结果
-            return self._generate_fallback_analysis(news_items)
-    
-    def _generate_fallback_analysis(self, news_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """生成备用分析结果"""
-        results = []
-        for news in news_items:
-            results.append({
-                "title": news['title'],
-                "summary": f"这是关于{news['title']}的分析摘要",
-                "keywords": self._extract_keywords(news['title']),
-                "sentiment": "neutral"
-            })
-        return results
+
     
     def _preprocess_news(self, news_items: List[Dict[str, Any]]) -> str:
         """预处理新闻数据"""
@@ -617,49 +411,13 @@ class AIAnalyzer:
     def _analyze_single_event(self, event: str) -> str:
         """分析单个关键事件"""
         try:
-            from openai import OpenAI
-            
-            # 初始化客户端
-            client = OpenAI(
-                api_key=settings.AI_API_KEY,
-                base_url=settings.AI_API_URL
-            )
-            
-            # 构建提示词
-            prompt = self.prompts["second_layer"] + "\n\n事件：" + event
-            
-            # 调用API
-            response = client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
-                    {"role": "system", "content": "你是一个专业的新闻分析师"},
-                    {"role": "user", "content": prompt}
-                ],
-                stream=False,
-                max_tokens=4096
-            )
-            
-            return response.choices[0].message.content
-        except Exception as e:
-            print(f"分析单个事件失败: {e}")
-            return f"# 分析失败\n\n{str(e)}"
-    
-    def _third_layer_analysis(self, first_layer_result: str, second_layer_results: List[str]) -> str:
-        """第三层综合分析"""
-        try:
             import httpx
             import json
             
             # 构建提示词
-            prompt = self.prompts["third_layer"] + "\n\n"
-            prompt += "# 第一层分析结果\n" + first_layer_result + "\n\n"
-            prompt += "# 第二层分析结果\n"
-            for i, result in enumerate(second_layer_results):
-                prompt += f"## 事件 {i+1} 分析\n" + result + "\n\n"
+            prompt = self.prompts["second_layer"] + "\n\n事件：" + event
             
             # 直接使用HTTP请求调用API
-            print("发送第三层分析请求...")
-            
             headers = {
                 "Content-Type": "application/json",
                 "Authorization": f"Bearer {settings.AI_API_KEY}"
@@ -689,12 +447,117 @@ class AIAnalyzer:
             if response.status_code != 200:
                 print(f"API调用失败，状态码: {response.status_code}")
                 print(f"响应内容: {response.text}")
-                # 备用方案
-                return "# 综合分析\n\n分析失败，使用备用方案。"
+                return f"# 分析失败\n\nAPI调用失败，状态码: {response.status_code}"
             
             # 解析响应
             response_data = response.json()
             return response_data['choices'][0]['message']['content']
+        except Exception as e:
+            print(f"分析单个事件失败: {e}")
+            return f"# 分析失败\n\n{str(e)}"
+    
+    def _third_layer_analysis(self, first_layer_result: str, second_layer_results: List[str]) -> str:
+        """第三层综合分析"""
+        try:
+            import httpx
+            import json
+            import time
+            
+            # 获取配置参数
+            max_retries = settings.THIRD_LAYER_RETRIES
+            timeout = settings.THIRD_LAYER_TIMEOUT
+            initial_delay = settings.THIRD_LAYER_RETRY_DELAY
+            
+            # 构建完整提示词（包含第二层分析）
+            def build_full_prompt():
+                prompt = self.prompts["third_layer"] + "\n\n"
+                prompt += "# 第一层分析结果\n" + first_layer_result + "\n\n"
+                prompt += "# 第二层分析结果\n"
+                for i, result in enumerate(second_layer_results):
+                    prompt += f"## 事件 {i+1} 分析\n" + result + "\n\n"
+                return prompt
+            
+            # 构建简化提示词（只包含第一层分析）
+            def build_simple_prompt():
+                prompt = self.prompts["third_layer"] + "\n\n"
+                prompt += "# 第一层分析结果\n" + first_layer_result + "\n\n"
+                prompt += "# 第二层分析结果\n"
+                prompt += "## 事件分析\n分析失败，使用第一层分析结果进行综合分析。\n\n"
+                return prompt
+            
+            # 发送请求的函数
+            def send_request(prompt_content):
+                headers = {
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {settings.AI_API_KEY}"
+                }
+                
+                payload = {
+                    "model": "deepseek-chat",
+                    "messages": [
+                        {"role": "system", "content": "你是一个专业的新闻分析师"},
+                        {"role": "user", "content": prompt_content}
+                    ],
+                    "stream": False,
+                    "max_tokens": 4096
+                }
+                
+                # 创建自定义的HTTP客户端，不使用proxies参数
+                with httpx.Client() as client:
+                    response = client.post(
+                        settings.AI_API_URL,
+                        headers=headers,
+                        json=payload,
+                        timeout=timeout
+                    )
+                
+                print(f"HTTP响应状态: {response.status_code}")
+                
+                if response.status_code != 200:
+                    print(f"API调用失败，状态码: {response.status_code}")
+                    print(f"响应内容: {response.text}")
+                    raise Exception(f"API调用失败，状态码: {response.status_code}")
+                
+                # 解析响应
+                response_data = response.json()
+                return response_data['choices'][0]['message']['content']
+            
+            # 第一次尝试：使用完整提示词
+            prompt = build_full_prompt()
+            print(f"发送第三层分析请求（完整提示词）...")
+            print(f"超时时间: {timeout}秒，最多重试 {max_retries} 次")
+            
+            # 实现重试逻辑
+            for attempt in range(max_retries):
+                try:
+                    print(f"尝试 {attempt+1}/{max_retries}...")
+                    result = send_request(prompt)
+                    print(f"第三层分析成功（尝试 {attempt+1}/{max_retries}）")
+                    return result
+                except Exception as e:
+                    print(f"尝试 {attempt+1} 失败: {e}")
+                    if attempt < max_retries - 1:
+                        # 指数退避策略
+                        delay = initial_delay * (2 ** attempt)
+                        print(f"{delay}秒后进行下一次尝试...")
+                        time.sleep(delay)
+                    else:
+                        print(f"所有 {max_retries} 次尝试都失败")
+            
+            # 所有尝试都失败，降级为使用简化提示词（只包含第一层分析）
+            print("降级策略：使用简化提示词（只包含第一层分析）...")
+            simple_prompt = build_simple_prompt()
+            
+            # 对简化提示词进行最后一次尝试
+            try:
+                result = send_request(simple_prompt)
+                print("简化提示词分析成功")
+                return result
+            except Exception as e:
+                print(f"简化提示词分析也失败: {e}")
+                # 最终备用方案
+                return "# 综合分析\n\n分析失败，使用备用方案。"
+                
         except Exception as e:
             print(f"第三层分析失败: {e}")
             import traceback
@@ -713,83 +576,7 @@ class AIAnalyzer:
         # 去重并返回前5个
         return list(set(keywords))[:5]
     
-    def _generate_daily_summary(self, analysis_results: List[Dict[str, Any]]) -> str:
-        """生成每日总结"""
-        # 这里应该调用AI模型生成总结
-        # 由于是示例，我们使用模拟总结
-        
-        summary = "# 今日新闻总结\n\n"
-        summary += f"今日共分析 {len(analysis_results)} 条新闻\n\n"
-        summary += "## 主要事件\n\n"
-        
-        # 提取关键词
-        all_keywords = []
-        for result in analysis_results:
-            # 兼容不同的字段名
-            if 'keywords' in result:
-                all_keywords.extend(result['keywords'])
-            elif '关键词' in result:
-                all_keywords.extend(result['关键词'])
-        
-        # 统计关键词频率
-        from collections import Counter
-        keyword_counts = Counter(all_keywords)
-        top_keywords = keyword_counts.most_common(10)
-        
-        summary += "### 热点关键词\n\n"
-        for keyword, count in top_keywords:
-            summary += f"- {keyword} ({count})\n"
-        
-        summary += "\n## 事件分析\n\n"
-        summary += "这里是对今日主要事件的详细分析..."
-        
-        return summary
-    
-    def _generate_event_analysis(self, analysis_results: List[Dict[str, Any]]) -> str:
-        """生成事件分析"""
-        # 这里应该调用AI模型生成事件分析
-        # 由于是示例，我们使用模拟分析
-        
-        analysis = "# 事件发展脉络分析\n\n"
-        analysis += "## 今日重要事件\n\n"
-        
-        # 按关键词分组事件
-        keyword_groups = {}
-        for result in analysis_results:
-            # 兼容不同的字段名
-            keywords = []
-            if 'keywords' in result:
-                keywords = result['keywords']
-            elif '关键词' in result:
-                keywords = result['关键词']
-            
-            # 获取新闻标题
-            title = ""
-            if 'title' in result:
-                title = result['title']
-            elif '新闻标题' in result:
-                title = result['新闻标题']
-            elif 'summary' in result:
-                title = result['summary'][:50] + "..."  # 使用摘要作为标题
-            
-            if keywords and title:
-                for keyword in keywords:
-                    if keyword not in keyword_groups:
-                        keyword_groups[keyword] = []
-                    keyword_groups[keyword].append(title)
-        
-        # 输出分组结果
-        for keyword, titles in keyword_groups.items():
-            if len(titles) > 1:
-                analysis += f"### {keyword}\n\n"
-                for title in titles:
-                    analysis += f"- {title}\n"
-                analysis += "\n"
-        
-        analysis += "## 横向分析\n\n"
-        analysis += "这里是对今日事件的横向分析..."
-        
-        return analysis
+
     
     def _generate_weekly_summary(self, news_items: List[Dict[str, Any]]) -> str:
         """生成每周总结"""

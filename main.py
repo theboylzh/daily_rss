@@ -1,6 +1,7 @@
 import os
 import sys
 import logging
+import traceback
 from datetime import datetime
 from subscription_manager import SubscriptionManager
 from news_fetcher import NewsFetcher
@@ -61,6 +62,20 @@ def main():
         
     except Exception as e:
         logger.error(f"执行失败: {e}", exc_info=True)
+        # 尝试发送错误通知邮件
+        try:
+            push_manager = PushManager()
+            error_analysis = {
+                "date": datetime.now().strftime('%Y-%m-%d'),
+                "first_layer": f"# 执行错误\n\n系统执行失败: {str(e)}",
+                "second_layer": [],
+                "third_layer": f"# 错误详情\n\n{traceback.format_exc()}",
+                "timestamp": datetime.now().isoformat(),
+                "news_count": 0
+            }
+            push_manager.send_daily_analysis(error_analysis)
+        except Exception as notify_error:
+            logger.error(f"发送错误通知失败: {notify_error}")
 
 
 def run_weekly_review():
@@ -186,29 +201,28 @@ def test_ai_analysis():
         # 创建AI分析器
         ai_analyzer = AIAnalyzer()
         
-        # 测试单条新闻分析
-        print("\n测试单条新闻分析:")
-        single_news = mock_news[0]
-        single_analysis = ai_analyzer._analyze_single_news(single_news)
-        print(f"新闻标题: {single_analysis['title']}")
-        print(f"分析摘要: {single_analysis['summary']}")
-        print(f"关键词: {single_analysis['keywords']}")
-        print(f"情感分析: {single_analysis['sentiment']}")
+        # 测试完整的每日分析
+        print("\n测试完整的每日分析:")
+        analysis_result = ai_analyzer.analyze_daily_news(mock_news)
+        print(f"分析完成，结果包含: {list(analysis_result.keys())}")
         
-        # 测试并行分析
-        print("\n测试并行分析:")
-        analysis_results = ai_analyzer._parallel_analysis(mock_news)
-        print(f"并行分析完成，共分析 {len(analysis_results)} 条新闻")
+        # 打印第一层分析结果
+        if 'first_layer' in analysis_result:
+            print("\n第一层分析结果:")
+            print(analysis_result['first_layer'][:500] + "..." if len(analysis_result['first_layer']) > 500 else analysis_result['first_layer'])
         
-        # 测试生成分析报告
-        print("\n测试生成分析报告:")
-        daily_summary = ai_analyzer._generate_daily_summary(analysis_results)
-        print("每日总结:")
-        print(daily_summary)
+        # 打印第二层分析结果
+        if 'second_layer' in analysis_result:
+            print(f"\n第二层分析结果 (共 {len(analysis_result['second_layer'])} 个事件):")
+            for i, event in enumerate(analysis_result['second_layer']):
+                print(f"事件 {i+1}:")
+                print(event[:300] + "..." if len(event) > 300 else event)
+                print()
         
-        event_analysis = ai_analyzer._generate_event_analysis(analysis_results)
-        print("\n事件分析:")
-        print(event_analysis)
+        # 打印第三层分析结果
+        if 'third_layer' in analysis_result:
+            print("\n第三层分析结果:")
+            print(analysis_result['third_layer'][:500] + "..." if len(analysis_result['third_layer']) > 500 else analysis_result['third_layer'])
         
         logger.info("AI分析功能测试完成")
         

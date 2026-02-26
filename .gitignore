@@ -36,6 +36,7 @@ build/
 MAINTENANCE_GUIDE.md
 SECRETS_MANAGEMENT.md
 PRD.md
+test_github_action.md
 
 # Trae IDE 文件夹
 .trae/
