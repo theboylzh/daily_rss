@@ -19,8 +19,6 @@ class Settings(BaseSettings):
     # 分析配置
     ANALYSIS_DIR: str = "data/analysis"
     DAILY_ANALYSIS_DIR: str = "data/analysis/daily"
-    WEEKLY_ANALYSIS_DIR: str = "data/analysis/weekly"
-    MONTHLY_ANALYSIS_DIR: str = "data/analysis/monthly"
     
     # AI配置
     AI_API_KEY: str = ""

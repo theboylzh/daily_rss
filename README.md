@@ -184,10 +184,8 @@ daily_rss/
 │       └── rss-tool.yml      # GitHub Actions配置
 ├── data/
 │   ├── news/                 # 新闻存储目录
-│   ├── analysis/
-│   │   ├── daily/            # 每日分析结果
-│   │   ├── weekly/           # 每周分析结果（已废弃）
-│   │   └── monthly/          # 每月分析结果（已废弃）
+│   └── analysis/
+│   │   └── daily/            # 每日分析结果
 │   └── subscriptions.json    # 订阅源配置
 ├── .env.example              # 环境变量示例
 ├── .gitignore                # Git忽略文件
