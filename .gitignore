@@ -32,12 +32,10 @@ build/
 # 日志文件
 *.log
 
-# 项目文档
+# 项目文档（忽略）
 MAINTENANCE_GUIDE.md
 SECRETS_MANAGEMENT.md
 PRD.md
-test_github_action.md
-exist_problems.txt
 
 # Trae IDE 文件夹
 .trae/
