@@ -78,41 +78,6 @@ def main():
             logger.error(f"发送错误通知失败: {notify_error}")
 
 
-def run_weekly_review():
-    """运行周回顾"""
-    logger.info("开始周回顾分析...")
-    
-    try:
-        ai_analyzer = AIAnalyzer()
-        analysis_result = ai_analyzer.analyze_weekly_news()
-        
-        if analysis_result:
-            push_manager = PushManager()
-            push_manager.send_weekly_analysis(analysis_result)
-        
-        logger.info("周回顾分析完成")
-        
-    except Exception as e:
-        logger.error(f"周回顾失败: {e}", exc_info=True)
-
-
-def run_monthly_review():
-    """运行月回顾"""
-    logger.info("开始月回顾分析...")
-    
-    try:
-        ai_analyzer = AIAnalyzer()
-        analysis_result = ai_analyzer.analyze_monthly_news()
-        
-        if analysis_result:
-            push_manager = PushManager()
-            push_manager.send_monthly_analysis(analysis_result)
-        
-        logger.info("月回顾分析完成")
-        
-    except Exception as e:
-        logger.error(f"月回顾失败: {e}", exc_info=True)
-
 
 def add_subscription(url, name=None):
     """添加订阅源"""
@@ -235,11 +200,7 @@ if __name__ == "__main__":
     if len(sys.argv) > 1:
         command = sys.argv[1]
         
-        if command == "weekly":
-            run_weekly_review()
-        elif command == "monthly":
-            run_monthly_review()
-        elif command == "add":
+        if command == "add":
             if len(sys.argv) > 2:
                 url = sys.argv[2]
                 name = sys.argv[3] if len(sys.argv) > 3 else None
@@ -258,7 +219,7 @@ if __name__ == "__main__":
             test_ai_analysis()
         else:
             print(f"未知命令: {command}")
-            print("可用命令: weekly, monthly, add, remove, list, ai-test")
+            print("可用命令: add, remove, list, ai-test")
     else:
         # 执行默认的每日任务
         main()
