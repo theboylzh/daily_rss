@@ -153,7 +153,6 @@ python main.py
 
 GitHub Actions工作流默认配置：
 - **每日任务**：每天 UTC 0:00（北京时间早上 8:00）
-- **测试任务**：每天 UTC 4:48（北京时间中午 12:48）
 
 如需调整时间，修改`.github/workflows/rss-tool.yml`文件中的cron表达式。
 
