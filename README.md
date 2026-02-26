@@ -181,11 +181,12 @@ GitHub Actions工作流默认配置：
 
 #### 9. 部署最佳实践
 
-1. **定期更新依赖**：每季度更新一次`requirements.txt`中的依赖版本
-2. **监控执行状态**：定期检查工作流执行状态
-3. **备份配置**：定期备份`.env`文件和GitHub Secrets配置
-4. **安全管理**：定期轮换API密钥和密码
+1. **定期更新依赖**：每季度更新一次`requirements.txt` 中的依赖版本
+2. **监控执行状态**：定期检查工作流执行状态和日志
+3. **备份配置**：定期备份`.env` 文件和 GitHub Secrets 配置
+4. **安全管理**：定期轮换 API 密钥和密码（建议每 3-6 个月）
 5. **性能优化**：根据实际情况调整订阅源数量和分析深度
+6. **配置验证**：部署后运行`python validate_config.py` 验证配置
 
 ## 项目结构
 
@@ -210,7 +211,8 @@ daily_rss/
 ├── push_manager.py           # 推送管理
 ├── main.py                   # 主程序
 ├── requirements.txt          # 依赖文件
-└── README.md                 # 项目说明
+├── README.md                 # 项目说明
+└── PRD.md                    # 产品需求文档
 ```
 
 ## 配置说明
@@ -300,6 +302,21 @@ python main.py monthly
 ### 日志查看
 
 工具会生成`rss_tool.log`文件，记录运行过程中的日志信息，可用于排查问题。
+
+### 配置验证
+
+运行以下命令验证配置是否正确：
+
+```bash
+python validate_config.py
+```
+
+此脚本会检查：
+- 环境变量配置
+- 依赖项安装情况
+- 文件结构完整性
+- GitHub Actions workflow 配置
+- .gitignore 配置
 
 ## 后续优化
 

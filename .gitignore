@@ -35,7 +35,6 @@ build/
 # 项目文档（忽略）
 MAINTENANCE_GUIDE.md
 SECRETS_MANAGEMENT.md
-PRD.md
 
 # Trae IDE 文件夹
 .trae/
