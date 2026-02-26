@@ -4,10 +4,6 @@ on:
   schedule:
     # 每日任务：UTC 0 点（北京时间早上 8 点）
     - cron: '0 0 * * *'
-    # 每周任务：周一 UTC 0 点（北京时间周一早上 8 点）
-    - cron: '0 0 * * 1'
-    # 每月任务：每月 1 日 UTC 0 点（北京时间每月 1 日早上 8 点）
-    - cron: '0 0 1 * *'
   # 手动触发
   workflow_dispatch:
 
@@ -43,18 +39,7 @@ jobs:
         echo "PROJECT_NAME=Daily RSS" >> .env
 
     - name: Run daily task
-      if: github.event_name == 'workflow_dispatch' || contains(github.event.schedule.cron, '0 0 * * *')
       run: python main.py
-      continue-on-error: false
-
-    - name: Run weekly task
-      if: contains(github.event.schedule.cron, '0 0 * * 1')
-      run: python main.py weekly
-      continue-on-error: false
-
-    - name: Run monthly task
-      if: contains(github.event.schedule.cron, '0 0 1 * *')
-      run: python main.py monthly
       continue-on-error: false
 
     - name: Archive logs
