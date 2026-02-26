@@ -8,7 +8,7 @@
 - **新闻抓取**：自动抓取24小时内的最新新闻，支持去重
 - **AI分析**：使用AI模型对新闻进行分析，支持并行分析
 - **推送功能**：将分析结果以美观的HTML格式推送到邮箱
-- **自动化操作**：支持每日、每周、每月的定时任务
+- **自动化操作**：支持每日定时任务，通过 GitHub Actions 调度
 - **数据管理**：自动清理过期数据，保留2个月的新闻数据
 
 ## 技术栈
@@ -67,18 +67,6 @@ python main.py add <url> [name]
 
 ```bash
 python main.py
-```
-
-#### 运行周回顾
-
-```bash
-python main.py weekly
-```
-
-#### 运行月回顾
-
-```bash
-python main.py monthly
 ```
 
 #### 查看订阅源列表
@@ -199,8 +187,8 @@ daily_rss/
 │   ├── news/                 # 新闻存储目录
 │   ├── analysis/
 │   │   ├── daily/            # 每日分析结果
-│   │   ├── weekly/           # 每周分析结果
-│   │   └── monthly/          # 每月分析结果
+│   │   ├── weekly/           # 每周分析结果（已废弃）
+│   │   └── monthly/          # 每月分析结果（已废弃）
 │   └── subscriptions.json    # 订阅源配置
 ├── .env.example              # 环境变量示例
 ├── .gitignore                # Git忽略文件
@@ -227,8 +215,6 @@ daily_rss/
 - `NEWS_RETENTION_DAYS`：新闻保留天数（默认60天）
 - `ANALYSIS_DIR`：分析结果存储目录
 - `DAILY_ANALYSIS_DIR`：每日分析结果目录
-- `WEEKLY_ANALYSIS_DIR`：每周分析结果目录
-- `MONTHLY_ANALYSIS_DIR`：每月分析结果目录
 - `AI_API_KEY`：AI模型的API密钥
 - `AI_MODEL`：AI模型名称（默认glm-4）
 - `AI_API_URL`：AI模型的API地址
@@ -268,18 +254,6 @@ python main.py list
 
 ```bash
 python main.py
-```
-
-### 手动运行周回顾
-
-```bash
-python main.py weekly
-```
-
-### 手动运行月回顾
-
-```bash
-python main.py monthly
 ```
 
 ## 注意事项

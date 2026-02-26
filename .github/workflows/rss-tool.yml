@@ -39,10 +39,44 @@ jobs:
         echo "EMAIL_SMTP_PORT=465" >> .env
         echo "TAVILY_API_KEY=${{ secrets.TAVILY_API_KEY }}" >> .env
         echo "PROJECT_NAME=Daily RSS" >> .env
+        echo "--- .env 文件内容 ---"
+        cat .env
+        echo "--- 验证结束 ---"
+
+    - name: Verify environment variables
+      run: |
+        echo "检查 Secrets 是否已设置..."
+        if [ -z "${{ secrets.AI_API_KEY }}" ]; then
+          echo "::error::AI_API_KEY Secret 未设置！"
+          exit 1
+        fi
+        if [ -z "${{ secrets.EMAIL_PASSWORD }}" ]; then
+          echo "::error::EMAIL_PASSWORD Secret 未设置！"
+          exit 1
+        fi
+        echo "Secrets 验证通过"
+        echo "Python 版本：$(python --version)"
+        echo "当前目录：$(pwd)"
+        echo "文件列表：$(ls -la)"
 
     - name: Run daily task
-      run: python main.py
+      run: |
+        echo "开始运行主程序..."
+        echo "运行时间：$(date)"
+        python main.py 2>&1 | tee run_output.log
+        echo "程序运行结束"
       continue-on-error: false
+
+    - name: Show error details
+      if: failure()
+      run: |
+        echo "::error::程序运行失败！"
+        echo "=== .env 文件内容 ==="
+        cat .env
+        echo "=== 程序输出日志 ==="
+        cat run_output.log 2>/dev/null || echo "无输出日志"
+        echo "=== rss_tool.log 日志 ==="
+        cat rss_tool.log 2>/dev/null || echo "无 rss_tool.log"
 
     - name: Archive logs
       if: always()
