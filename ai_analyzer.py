@@ -827,13 +827,5 @@ if __name__ == "__main__":
     daily_analysis = analyzer.analyze_daily_news()
     print(f"每日分析完成：{daily_analysis.get('date', '未知')}")
 
-    # 测试每周分析
-    # weekly_analysis = analyzer.analyze_weekly_news()
-    # print(f"每周分析完成：{weekly_analysis.get('week', '未知')}")
-
-    # 测试每月分析
-    # monthly_analysis = analyzer.analyze_monthly_news()
-    # print(f"每月分析完成：{monthly_analysis.get('month', '未知')}")
-
     # 清理过期分析数据
     analyzer.clean_old_analysis()
