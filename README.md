@@ -90,89 +90,48 @@ python main.py remove <subscription_id>
 
 ### 云端部署（推荐）
 
-使用GitHub Actions实现稳定的定时任务：
+只需 Fork 仓库并配置密钥，即可自动运行。
 
-#### 1. 准备工作
+#### 1. Fork 仓库
 
-1. **创建GitHub仓库**：创建一个新的GitHub仓库，或使用现有仓库
-2. **上传代码**：将项目代码推送到GitHub仓库
+点击仓库右上角的 **Fork** 按钮，将此项目复制到你的 GitHub 账号。
 
-#### 2. 配置GitHub Secrets
+#### 2. 配置密钥
 
-在仓库的`Settings > Secrets and variables > Actions`中添加以下密钥：
+在你的 GitHub 仓库中，进入 **Settings → Secrets and variables → Actions**，点击 **New repository secret**，添加以下 4 个密钥：
 
-| Secret名称 | 描述 | 必需 |
-|-----------|------|------|
-| `AI_API_KEY` | AI模型的API密钥（如DeepSeek） | ✓ |
-| `EMAIL_SENDER` | 发送邮件的邮箱地址 | ✓ |
-| `EMAIL_RECEIVER` | 接收邮件的邮箱地址 | ✓ |
-| `EMAIL_PASSWORD` | 发送邮件的邮箱密码（建议使用应用密码） | ✓ |
-| `TAVILY_API_KEY` | Tavily搜索的API密钥（可选） | ✗ |
+| 密钥名称 | 说明 | 获取方式 |
+|---------|------|---------|
+| `AI_API_KEY` | AI 模型 API 密钥 | 需自行申请（推荐使用 [DeepSeek](https://platform.deepseek.com/)） |
+| `EMAIL_SENDER` | 发件人邮箱 | 你自己的邮箱地址 |
+| `EMAIL_RECEIVER` | 收件人邮箱 | 接收报告的邮箱地址 |
+| `EMAIL_PASSWORD` | 邮箱授权码 | 需向邮箱服务商申请（见下方说明） |
 
-#### 3. 邮箱应用密码设置
+#### 3. 获取邮箱授权码
 
-为了安全起见，建议使用邮箱的应用密码而不是主密码：
+大多数邮箱服务（如 163、QQ、Gmail）需要使用**授权码**而非登录密码：
 
-**163邮箱设置**：
-1. 登录163邮箱
-2. 进入「设置」>「POP3/SMTP/IMAP」
-3. 开启「IMAP/SMTP服务」
-4. 点击「客户端授权密码」，按照提示设置
+**163 邮箱**：设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 设置客户端授权密码
 
-**Gmail设置**：
-1. 登录Gmail
-2. 进入「管理您的Google账户」
-3. 选择「安全性」>「应用密码」
-4. 按照提示创建应用密码
+**QQ 邮箱**：设置 → 账户 → 开启 SMTP 服务 → 生成授权码
 
-#### 4. 启用GitHub Actions
+**Gmail**：安全性 → 应用密码 → 生成应用密码
 
-1. 进入仓库的「Actions」标签页
-2. 确认工作流文件已正确加载
-3. 手动触发工作流测试：点击「Run workflow」
+#### 4. 启用自动运行
 
-#### 5. 验证部署
+1. 进入仓库的 **Actions** 标签页
+2. 点击 **I understand my workflows, go ahead and enable them**（如出现）
+3. 点击 **Run workflow** 手动测试一次
 
-1. **检查工作流执行状态**：在「Actions」标签页查看执行状态
-2. **验证邮件推送**：检查接收邮箱是否收到分析报告
-3. **查看日志**：如果执行失败，查看详细日志进行排查
+#### 5. 完成任务！
 
-#### 6. 部署测试
+等待约 1-2 分钟，检查收件箱是否收到新闻分析报告。
 
-运行以下命令测试部署配置：
+---
 
-```bash
-# 测试配置验证
-python validate_config.py
+**定时任务时间**：每日 UTC 0:00（北京时间早上 8:00）自动运行
 
-# 测试本地运行
-python main.py
-```
-
-#### 7. 定时任务配置
-
-GitHub Actions工作流默认配置：
-- **每日任务**：每天 UTC 0:00（北京时间早上 8:00）
-
-如需调整时间，修改`.github/workflows/rss-tool.yml`文件中的cron表达式。
-
-#### 8. 常见部署问题
-
-| 问题 | 可能原因 | 解决方案 |
-|------|---------|---------|
-| 邮件发送失败 | 邮箱密码错误或未开启SMTP服务 | 检查邮箱设置，使用应用密码 |
-| AI分析失败 | API密钥错误或余额不足 | 检查API密钥，确保余额充足 |
-| 工作流执行失败 | Secrets未配置或配置错误 | 检查Secrets配置，确保名称正确 |
-| 新闻抓取失败 | 网络连接问题或订阅源无效 | 检查网络连接，验证订阅源URL |
-
-#### 9. 部署最佳实践
-
-1. **定期更新依赖**：每季度更新一次`requirements.txt` 中的依赖版本
-2. **监控执行状态**：定期检查工作流执行状态和日志
-3. **备份配置**：定期备份`.env` 文件和 GitHub Secrets 配置
-4. **安全管理**：定期轮换 API 密钥和密码（建议每 3-6 个月）
-5. **性能优化**：根据实际情况调整订阅源数量和分析深度
-6. **配置验证**：部署后运行`python validate_config.py` 验证配置
+**修改运行时间**：编辑 `.github/workflows/rss-tool.yml` 中的 `cron` 表达式
 
 ## 项目结构
 
