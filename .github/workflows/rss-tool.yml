@@ -2,8 +2,8 @@ name: Daily RSS Tool
 
 on:
   schedule:
-    # 每日任务：UTC 0 点（北京时间早上 8 点）
-    - cron: '0 0 * * *'
+    # 每日任务：UTC 20 点（北京时间凌晨 4 点）- 避开 GitHub 使用高峰期
+    - cron: '0 20 * * *'
   # 手动触发
   workflow_dispatch:
 
