@@ -280,7 +280,7 @@ class AIAnalyzer:
                     settings.AI_API_URL,
                     headers=headers,
                     json=payload,
-                    timeout=30.0
+                    timeout=90.0
                 )
 
             print(f"HTTP 响应状态：{response.status_code}")
@@ -414,7 +414,7 @@ class AIAnalyzer:
                     settings.AI_API_URL,
                     headers=headers,
                     json=payload,
-                    timeout=20.0
+                    timeout=60.0
                 )
 
             print(f"AI 提取响应状态：{response.status_code}")
@@ -511,7 +511,7 @@ class AIAnalyzer:
                     settings.AI_API_URL,
                     headers=headers,
                     json=payload,
-                    timeout=30.0
+                    timeout=90.0
                 )
 
             print(f"HTTP 响应状态：{response.status_code}")
@@ -795,7 +795,7 @@ class AIAnalyzer:
                     settings.AI_API_URL,
                     headers=headers,
                     json=payload,
-                    timeout=30.0
+                    timeout=90.0
                 )
 
             print(f"HTTP 响应状态：{response.status_code}")
