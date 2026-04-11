@@ -160,7 +160,7 @@ daily_rss/
 ├── config.py                 # 配置管理
 ├── subscription_manager.py   # 订阅源管理
 ├── news_fetcher.py           # 新闻抓取
-├── ai_analyzer.py            # AI分析
+├── ai_analyzer_v2.py            # AI分析
 ├── push_manager.py           # 推送管理
 ├── main.py                   # 主程序
 ├── requirements.txt          # 依赖文件

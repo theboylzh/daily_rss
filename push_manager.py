@@ -23,11 +23,18 @@ class PushManager:
         if not analysis:
             print("无分析报告可发送")
             return False
-        
+
         print("开始发送每日分析报告...")
-        
-        # 生成邮件内容
-        subject = f"News Daily - {analysis['date']}"
+
+        # 生成邮件主题（兼容 V1 和 V2 格式）
+        if 'date' in analysis:
+            subject = f"News Daily - {analysis['date']}"
+        elif 'summary' in analysis:
+            # V2 格式，使用当前日期
+            subject = f"News Daily - {datetime.now().strftime('%Y-%m-%d')}"
+        else:
+            # V1 格式，尝试从 first_layer 提取日期
+            subject = f"News Daily - {datetime.now().strftime('%Y-%m-%d')}"
 
         # 判断是 V2 格式还是 V1 格式
         if 'summary' in analysis:
