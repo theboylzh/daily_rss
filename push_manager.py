@@ -331,7 +331,7 @@ class PushManager:
         # 渲染各个板块
         html = self._render_v2_summary(html, analysis.get('summary', {}))
         html = self._render_v2_key_news(html, analysis.get('key_news_brief', []), analysis.get('briefing', {}))
-        html = self._render_v2_news_list(html)
+        html = self._render_v2_news_list(html, analysis.get('briefing', {}))
         html = self._render_v2_opinions(html, analysis.get('perspectives', []))
         html = self._render_v2_insights(html, analysis.get('deep_analysis', []))
         html = self._render_v2_advices(html, analysis.get('suggestions', {}))
@@ -420,68 +420,39 @@ class PushManager:
 
         return html
 
-    def _render_v2_news_list(self, html: str) -> str:
-        """渲染新闻列表板块 - 基于关键词智能分类"""
+    def _render_v2_news_list(self, html: str, briefing: Dict[str, Any]) -> str:
+        """渲染新闻列表板块 - 使用 AI 生成的 briefing 摘要文本"""
         try:
-            # 获取当前日期的新闻文件
-            today = datetime.now().strftime('%Y-%m-%d')
-            news_file = os.path.join('data', 'news', f'{today}.json')
+            # 从 briefing 中获取 AI 生成的四类摘要
+            politics = briefing.get('politics', '暂无政治新闻')
+            economy = briefing.get('economy', '暂无经济新闻')
+            industry = briefing.get('industry', '暂无行业新闻')
+            tech = briefing.get('tech', '暂无科技新闻')
 
-            if not os.path.exists(news_file):
-                return self._fill_empty_news_list(html)
+            # 将摘要文本转换为 HTML 段落格式
+            # AI 输出的摘要是连续文本，可能有句号分隔，按句号拆分成段落
+            def text_to_paragraphs(text):
+                # 按中文句号拆分
+                sentences = text.split('。')
+                paragraphs = []
+                current_para = []
+                for sent in sentences:
+                    sent = sent.strip()
+                    if sent:
+                        current_para.append(sent)
+                        # 每 2-3 句组成一个段落
+                        if len(current_para) >= 2:
+                            paragraphs.append('。'.join(current_para) + '。')
+                            current_para = []
+                if current_para:
+                    paragraphs.append('。'.join(current_para) + '。')
+                # 转换为 HTML
+                return ''.join([f'<p>{p}</p>' for p in paragraphs if p])
 
-            with open(news_file, 'r', encoding='utf-8') as f:
-                news_items = json.load(f)
-
-            if not news_items:
-                return self._fill_empty_news_list(html)
-
-            # 基于关键词的智能分类
-            categories = {
-                'politics': [],
-                'economy': [],
-                'industry': [],
-                'tech': []
-            }
-
-            # 关键词定义
-            keywords = {
-                'politics': ['政府', '政策', '国际', '外交', '协议', '审查', '监管', '国会', '总统', '法案', '制裁', '地缘', '政治', '工会', '合规', '出海'],
-                'economy': ['经济', '市场', '股价', '交付', '营收', '利润', '并购', '估值', '融资', '投资', 'IPO', '财报', '通胀', '利率', '央行', '消费者', '油价', '涨价'],
-                'industry': ['行业', '商业', '公司', '企业', '门店', '重组', '合作', '签约', '发布', '产品', '销售', '渠道', '供应链', '制造', '工厂', '游戏', '零售', '便利店'],
-                'tech': ['AI', '技术', '科技', '模型', '算法', '芯片', '软件', '编程', '代码', '系统', '平台', '数据', '云端', '算力', '机器人', '无人', '自动驾驶', '大模型']
-            }
-
-            for news in news_items[:12]:  # 最多 12 条
-                title = news.get('title', '')
-                content = news.get('content', '')
-                text = title + ' ' + content  # 合并标题和内容进行匹配
-
-                # 计算每个类别的匹配分数
-                scores = {}
-                for cat, kw_list in keywords.items():
-                    score = sum(1 for kw in kw_list if kw in text)
-                    scores[cat] = score
-
-                # 选择分数最高的类别
-                best_cat = max(scores, key=scores.get)
-                if scores[best_cat] > 0:  # 至少有 1 个匹配
-                    url = news.get('url', '#')
-                    categories[best_cat].append(f'<li><a href="{url}" style="color: inherit; text-decoration: none;">{title}</a></li>')
-                else:
-                    # 无匹配时，默认分配到科技
-                    url = news.get('url', '#')
-                    categories['tech'].append(f'<li><a href="{url}" style="color: inherit; text-decoration: none;">{title}</a></li>')
-
-            # 确保每个类别至少有内容
-            for cat in categories:
-                if not categories[cat]:
-                    categories[cat] = ['<li>暂无相关新闻</li>']
-
-            html = html.replace('{{news_politics_items}}', ''.join(categories['politics']))
-            html = html.replace('{{news_economy_items}}', ''.join(categories['economy']))
-            html = html.replace('{{news_industry_items}}', ''.join(categories['industry']))
-            html = html.replace('{{news_tech_items}}', ''.join(categories['tech']))
+            html = html.replace('{{news_politics_items}}', text_to_paragraphs(politics))
+            html = html.replace('{{news_economy_items}}', text_to_paragraphs(economy))
+            html = html.replace('{{news_industry_items}}', text_to_paragraphs(industry))
+            html = html.replace('{{news_tech_items}}', text_to_paragraphs(tech))
 
             return html
 
@@ -648,10 +619,24 @@ class PushManager:
         return html
 
     def _render_single_advice(self, category: str, title: str, content: str) -> str:
-        """渲染单个建议项"""
+        """渲染单个建议项 - 支持 Markdown 加粗转换"""
         # 将换行符转换为 <p> 标签
         content_paragraphs = content.split('\n')
-        content_html = ''.join([f'<p>{p.strip()}</p>' for p in content_paragraphs if p.strip()])
+
+        # 处理每个段落：转换 Markdown 加粗 (**text**) 为 HTML <strong>
+        def markdown_to_html(text):
+            # 转换 **加粗** 为 <strong>
+            text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
+            # 转换 *加粗* 为 <strong>（备用）
+            text = re.sub(r'\*(.*?)\*', r'<strong>\1</strong>', text)
+            return text
+
+        content_html = ''
+        for p in content_paragraphs:
+            p = p.strip()
+            if p:
+                html_p = markdown_to_html(p)
+                content_html += f'<p>{html_p}</p>'
 
         return f'''
         <table class="advice-item" cellpadding="0" cellspacing="0">
