@@ -305,14 +305,17 @@ class AIAnalyzerV2:
 - digest: 描述今天发生的事件，2-3 句话
 - keywords: 三个关键词，概括今日新闻主题
 - key_news_brief: 3 个关键新闻，带标签，用于展示和阶段 3 分析
-- briefing: 四类新闻简报，每类 50-100 字
+  - title 必须使用原始新闻标题，不能改写或缩写
+- briefing: 四类新闻简报，每类 50-100 字（这是摘要文本，用于 AI 分类参考）
 - key_news_list: 5-10 条重点新闻，包含完整标题 + 正文，用于阶段 2 观点生成
+  - title 必须使用原始新闻标题，不能改写或缩写
 
 标签选择=从以下预设标签库中选择 1-2 个标签：
 """ + ", ".join(TAGS_LIBRARY) + """
 
 注意事项:
 - key_news_brief 固定 3 条，key_news_list 5-10 条，两者可以内容有重叠但用途不同
+- key_news_brief 和 key_news_list 的 title 必须直接使用原始新闻标题，不能 AI 改写
 - 所有字段必须存在，不能缺失
 - JSON 格式必须正确，能被直接解析
 """

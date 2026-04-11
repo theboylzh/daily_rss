@@ -359,25 +359,69 @@ class PushManager:
         return html
 
     def _render_v2_key_news(self, html: str, key_news_brief: List[Dict], briefing: Dict[str, Any]) -> str:
-        """渲染重点新闻高亮板块"""
-        # 从 briefing 中获取四类新闻
-        economy = briefing.get('economy', '暂无经济新闻')
+        """渲染重点新闻高亮板块 - 全部使用原始新闻标题"""
+        # 从 key_news_brief 中获取 3 个原始标题，按标签分类
+        economy_titles = []
+        tech_titles = []
+        other_titles = []
 
-        # 简单处理：取每类新闻的前 80 字
-        economy_short = economy[:80] + '...' if len(economy) > 80 else economy
+        # 经济相关标签
+        economy_tags = ['经济', '金融', '商业', '市场', '政策', '行业']
+        # 科技相关标签
+        tech_tags = ['科技', '创新']
 
-        # 从 key_news_brief 中获取标题
-        highlight_tech_1 = key_news_brief[0].get('title', '科技新闻 1') if len(key_news_brief) > 0 else '暂无科技新闻'
-        highlight_tech_2 = key_news_brief[1].get('title', '科技新闻 2') if len(key_news_brief) > 1 else '暂无科技新闻'
+        for news in key_news_brief:
+            title = news.get('title', '')
+            tags = news.get('tags', [])
 
-        html = html.replace('{{highlight_economy}}', economy_short)
+            # 根据标签判断类别 - 优先判断科技
+            is_tech = any(tag in tech_tags for tag in tags)
+            is_economy = any(tag in economy_tags for tag in tags)
+
+            if is_tech:
+                tech_titles.append(title)
+            elif is_economy:
+                economy_titles.append(title)
+            else:
+                other_titles.append(title)
+
+        # 确保每个类别至少有 1 个标题
+        if not economy_titles:
+            # 从其他新闻中借一个
+            if other_titles:
+                economy_titles.append(other_titles.pop(0))
+            elif len(tech_titles) > 1:
+                economy_titles.append(tech_titles.pop())
+            elif key_news_brief:
+                economy_titles = [key_news_brief[0].get('title', '暂无经济新闻')]
+
+        if not tech_titles:
+            if other_titles:
+                tech_titles.append(other_titles.pop(0))
+            elif key_news_brief:
+                tech_titles = [key_news_brief[-1].get('title', '暂无科技新闻')]
+
+        # 分配标题到邮件模板（3 个位置：1 经济 + 2 科技）
+        highlight_economy = economy_titles[0]
+        highlight_tech_1 = tech_titles[0] if tech_titles else '暂无科技新闻'
+        # 科技 2 优先从科技中选，没有则从其他中借
+        if len(tech_titles) > 1:
+            highlight_tech_2 = tech_titles[1]
+        elif other_titles:
+            highlight_tech_2 = other_titles[0]
+        elif len(economy_titles) > 1:
+            highlight_tech_2 = economy_titles[1]
+        else:
+            highlight_tech_2 = highlight_tech_1  # 重复也没办法
+
+        html = html.replace('{{highlight_economy}}', highlight_economy)
         html = html.replace('{{highlight_tech_1}}', highlight_tech_1)
         html = html.replace('{{highlight_tech_2}}', highlight_tech_2)
 
         return html
 
     def _render_v2_news_list(self, html: str) -> str:
-        """渲染新闻列表板块"""
+        """渲染新闻列表板块 - 基于关键词智能分类"""
         try:
             # 获取当前日期的新闻文件
             today = datetime.now().strftime('%Y-%m-%d')
@@ -392,7 +436,7 @@ class PushManager:
             if not news_items:
                 return self._fill_empty_news_list(html)
 
-            # 按类别分组（简化处理：随机分配）
+            # 基于关键词的智能分类
             categories = {
                 'politics': [],
                 'economy': [],
@@ -400,11 +444,34 @@ class PushManager:
                 'tech': []
             }
 
-            for i, news in enumerate(news_items[:12]):  # 最多 12 条
-                category = list(categories.keys())[i % 4]
-                title = news.get('title', '无标题')
-                url = news.get('url', '#')
-                categories[category].append(f'<li><a href="{url}" style="color: inherit; text-decoration: none;">{title}</a></li>')
+            # 关键词定义
+            keywords = {
+                'politics': ['政府', '政策', '国际', '外交', '协议', '审查', '监管', '国会', '总统', '法案', '制裁', '地缘', '政治', '工会', '合规', '出海'],
+                'economy': ['经济', '市场', '股价', '交付', '营收', '利润', '并购', '估值', '融资', '投资', 'IPO', '财报', '通胀', '利率', '央行', '消费者', '油价', '涨价'],
+                'industry': ['行业', '商业', '公司', '企业', '门店', '重组', '合作', '签约', '发布', '产品', '销售', '渠道', '供应链', '制造', '工厂', '游戏', '零售', '便利店'],
+                'tech': ['AI', '技术', '科技', '模型', '算法', '芯片', '软件', '编程', '代码', '系统', '平台', '数据', '云端', '算力', '机器人', '无人', '自动驾驶', '大模型']
+            }
+
+            for news in news_items[:12]:  # 最多 12 条
+                title = news.get('title', '')
+                content = news.get('content', '')
+                text = title + ' ' + content  # 合并标题和内容进行匹配
+
+                # 计算每个类别的匹配分数
+                scores = {}
+                for cat, kw_list in keywords.items():
+                    score = sum(1 for kw in kw_list if kw in text)
+                    scores[cat] = score
+
+                # 选择分数最高的类别
+                best_cat = max(scores, key=scores.get)
+                if scores[best_cat] > 0:  # 至少有 1 个匹配
+                    url = news.get('url', '#')
+                    categories[best_cat].append(f'<li><a href="{url}" style="color: inherit; text-decoration: none;">{title}</a></li>')
+                else:
+                    # 无匹配时，默认分配到科技
+                    url = news.get('url', '#')
+                    categories['tech'].append(f'<li><a href="{url}" style="color: inherit; text-decoration: none;">{title}</a></li>')
 
             # 确保每个类别至少有内容
             for cat in categories:
