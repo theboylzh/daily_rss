@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Daily - RSS 简报</title>
+    <style>
+        /* CSS Variables - Design Tokens from Figma */
+        :root {
+            --brand: #B88459;
+            --text-primary: #333333;
+            --text-secondary: #999999;
+            --bg-white: #FFFFFF;
+            --font-title-large: 'Noto Sans SC', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-title-medium: 'Noto Sans SC', BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --font-body: 'Noto Serif SC', Georgia, 'Times New Roman', serif;
+            --font-date: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-decorative: 'Young Serif', Georgia, 'Times New Roman', serif;
+        }
+
+        /* Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-white);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* 邮件客户端兼容样式 */
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        /* Typography */
+        .title-1 {
+            font-family: var(--font-title-large);
+            font-weight: 700;
+            font-size: 40px;
+            line-height: 100%;
+        }
+
+        .title-2 {
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 32px;
+            line-height: 100%;
+        }
+
+        .title-3 {
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 24px;
+            line-height: 100%;
+        }
+
+        .title-4 {
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 20px;
+            line-height: 100%;
+        }
+
+        .body-2 {
+            font-family: var(--font-body);
+            font-weight: 400;
+            font-size: 18px;
+            line-height: 27px;
+        }
+
+        .caption {
+            font-family: var(--font-title-medium);
+            font-weight: 400;
+            font-size: 14px;
+            line-height: 100%;
+        }
+
+        .date-text {
+            font-family: var(--font-date);
+            font-weight: 400;
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .decorative-title {
+            font-family: var(--font-decorative);
+            font-weight: 400;
+            font-size: 64px;
+        }
+
+        /* Colors */
+        .text-primary { color: var(--text-primary); }
+        .text-secondary { color: var(--text-secondary); }
+        .text-brand { color: var(--brand); }
+
+        /* Layout */
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            padding: 24px 40px;
+        }
+
+        .main-content {
+            padding: 0 240px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            padding-bottom: 24px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-title-center {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--text-secondary), transparent);
+            margin: 24px 0;
+        }
+
+        /* Section Spacing */
+        .section {
+            margin-bottom: 96px;
+        }
+
+        .section-gap {
+            margin-bottom: 78px;
+        }
+
+        /* Today Brief Section */
+        .today-brief {
+            margin-bottom: 96px;
+        }
+
+        .today-brief-label {
+            font-family: var(--font-decorative);
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .today-brief-title {
+            font-family: var(--font-title-large);
+            font-weight: 700;
+            font-size: 40px;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .today-brief-digest {
+            font-family: var(--font-body);
+            font-size: 18px;
+            color: var(--text-secondary);
+            line-height: 27px;
+            margin-bottom: 12px;
+        }
+
+        /* Keywords */
+        .keywords {
+            display: inline-flex;
+            gap: 12px;
+        }
+
+        .keyword-item {
+            display: inline-block;
+            padding: 6px 16px;
+            border: 1px solid var(--brand);
+            border-radius: 100px;
+            color: var(--brand);
+            font-size: 14px;
+        }
+
+        /* Key News Highlights */
+        .key-news-highlights {
+            display: table;
+            width: 100%;
+            margin-top: 96px;
+        }
+
+        .key-news-column {
+            display: table-cell;
+            width: 33.33%;
+            vertical-align: top;
+            padding-right: 48px;
+        }
+
+        .key-news-label {
+            font-family: var(--font-title-medium);
+            font-size: 20px;
+            color: var(--brand);
+            margin-bottom: 16px;
+        }
+
+        .key-news-title {
+            font-family: var(--font-title-medium);
+            font-size: 32px;
+            color: var(--text-primary);
+            line-height: 1.4;
+        }
+
+        /* News List */
+        .news-list {
+            margin-top: 40px;
+        }
+
+        .news-list-item {
+            display: table;
+            width: 100%;
+            margin-bottom: 24px;
+            gap: 200px;
+        }
+
+        .news-list-category {
+            display: table-cell;
+            width: 120px;
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 24px;
+            color: var(--text-primary);
+            vertical-align: top;
+        }
+
+        .news-list-content {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .news-list-content ul {
+            list-style-type: disc;
+            padding-left: 27px;
+        }
+
+        .news-list-content li {
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 27px;
+            margin-bottom: 12px;
+        }
+
+        /* Divider */
+        .divider-line {
+            height: 1px;
+            background-color: #E5E5E5;
+            margin: 24px 0;
+        }
+
+        /* Opinion Section */
+        .opinion-section {
+            margin-bottom: 78px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .section-title-cn {
+            font-family: var(--font-title-large);
+            font-weight: 700;
+            font-size: 40px;
+            color: var(--text-primary);
+        }
+
+        .section-title-en {
+            font-family: var(--font-title-medium);
+            font-size: 32px;
+            color: var(--text-secondary);
+        }
+
+        .opinion-item {
+            padding: 40px 0;
+            border-bottom: 1px solid #E5E5E5;
+        }
+
+        .opinion-number {
+            font-family: var(--font-decorative);
+            font-size: 32px;
+            color: var(--text-primary);
+            margin-bottom: 32px;
+        }
+
+        .opinion-title {
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 32px;
+            color: var(--text-primary);
+            margin-bottom: 32px;
+        }
+
+        .opinion-description {
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 27px;
+            color: var(--text-primary);
+            margin-bottom: 32px;
+        }
+
+        .opinion-quotes {
+            margin-top: 12px;
+        }
+
+        .quote-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 24px;
+            margin-bottom: 12px;
+        }
+
+        .quote-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .quote-text {
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 27px;
+            color: var(--text-secondary);
+        }
+
+        /* Insight Section */
+        .insight-section {
+            margin-bottom: 78px;
+        }
+
+        .insight-item {
+            background: transparent;
+            border-radius: 32px;
+            padding: 0;
+            margin-bottom: 56px;
+        }
+
+        .insight-category {
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 20px;
+            color: var(--brand);
+            margin-bottom: 12px;
+        }
+
+        .insight-title {
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 32px;
+            color: var(--text-primary);
+            margin-bottom: 56px;
+        }
+
+        .insight-content-row {
+            display: table;
+            width: 100%;
+            margin-bottom: 56px;
+        }
+
+        .insight-subtitle {
+            display: table-cell;
+            width: 120px;
+            vertical-align: top;
+        }
+
+        .insight-subtitle-number {
+            font-family: var(--font-title-medium);
+            font-size: 20px;
+            color: var(--text-secondary);
+            margin-bottom: 0;
+        }
+
+        .insight-subtitle-label {
+            font-family: var(--font-title-medium);
+            font-size: 20px;
+            color: var(--text-primary);
+        }
+
+        .insight-subtitle-content {
+            display: table-cell;
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 27px;
+            color: var(--text-primary);
+            padding-left: 64px;
+        }
+
+        /* Advice Section */
+        .advice-section {
+            margin-bottom: 0;
+        }
+
+        .advice-item {
+            display: table;
+            width: 100%;
+            margin-bottom: 32px;
+            gap: 128px;
+        }
+
+        .advice-category {
+            display: table-cell;
+            width: 120px;
+            font-family: var(--font-title-medium);
+            font-size: 20px;
+            color: var(--text-secondary);
+            vertical-align: top;
+            white-space: nowrap;
+        }
+
+        .advice-content {
+            display: table-cell;
+            vertical-align: top;
+        }
+
+        .advice-title {
+            font-family: var(--font-title-medium);
+            font-weight: 500;
+            font-size: 24px;
+            color: var(--text-primary);
+            margin-bottom: 32px;
+            width: 100%;
+        }
+
+        .advice-description {
+            font-family: var(--font-body);
+            font-size: 18px;
+            line-height: 27px;
+            color: var(--text-primary);
+        }
+
+        .advice-description p {
+            margin-bottom: 15px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 40px;
+            border-top: 1px solid #E5E5E5;
+            margin-top: 80px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        /* Responsive */
+        @media only screen and (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            .main-content {
+                padding: 0 16px;
+            }
+            .key-news-column {
+                display: block;
+                width: 100%;
+                padding-right: 0;
+                margin-bottom: 32px;
+            }
+            .news-list-item,
+            .insight-content-row,
+            .advice-item {
+                display: block;
+            }
+            .news-list-category,
+            .insight-subtitle,
+            .advice-category {
+                display: block;
+                width: 100%;
+                margin-bottom: 12px;
+            }
+            .insight-subtitle-content,
+            .advice-content {
+                display: block;
+                padding-left: 0;
+            }
+            .decorative-title {
+                font-size: 32px !important;
+            }
+            .title-1 {
+                font-size: 28px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                    <td class="date-text">{{date}}</td>
+                    <td>
+                        <table cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                            <tr>
+                                <td style="padding: 0 12px;">
+                                    <!-- Left decorative element -->
+                                    <svg width="124" height="14" viewBox="0 0 124 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M1 7C1 7 30 1 62 1C94 1 123 7 123 7" stroke="#B88459" stroke-width="2"/>
+                                        <circle cx="62" cy="7" r="6" fill="#B88459"/>
+                                    </svg>
+                                </td>
+                                <td class="decorative-title text-primary">News Daily</td>
+                                <td style="padding: 0 12px;">
+                                    <!-- Right decorative element (flipped) -->
+                                    <svg width="124" height="14" viewBox="0 0 124 14" fill="none" xmlns="http://www.w3.org/2000/svg" style="transform: scaleY(-1);">
+                                        <path d="M1 7C1 7 30 1 62 1C94 1 123 7 123 7" stroke="#B88459" stroke-width="2"/>
+                                        <circle cx="62" cy="7" r="6" fill="#B88459"/>
+                                    </svg>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                    <td class="date-text">{{news_count}} Articles</td>
+                </tr>
+            </table>
+            <div class="divider"></div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Today Brief Section -->
+            <section class="today-brief">
+                <p class="today-brief-label">Today Brief</p>
+                <h1 class="today-brief-title">{{summary.one_liner}}</h1>
+                <p class="today-brief-digest">{{summary.digest}}</p>
+                <div class="keywords">
+                    {{keywords_html}}
+                </div>
+
+                <!-- Key News Highlights -->
+                <table class="key-news-highlights" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="key-news-column">
+                            <p class="key-news-label">经济生活</p>
+                            <p class="key-news-title">{{highlight_economy}}</p>
+                        </td>
+                        <td class="key-news-column">
+                            <p class="key-news-label">科技</p>
+                            <p class="key-news-title">{{highlight_tech_1}}</p>
+                        </td>
+                        <td class="key-news-column">
+                            <p class="key-news-label">科技</p>
+                            <p class="key-news-title">{{highlight_tech_2}}</p>
+                        </td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- News List -->
+            <div class="divider-line"></div>
+            <section class="news-list">
+                <table cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        <td class="news-list-category">政治时事</td>
+                        <td class="news-list-content">
+                            <ul>
+                                {{news_politics_items}}
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+
+                <table cellpadding="0" cellspacing="0" width="100%" style="margin-top: 24px;">
+                    <tr>
+                        <td class="news-list-category">宏观经济</td>
+                        <td class="news-list-content">
+                            <ul>
+                                {{news_economy_items}}
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+
+                <table cellpadding="0" cellspacing="0" width="100%" style="margin-top: 24px;">
+                    <tr>
+                        <td class="news-list-category">行业动态</td>
+                        <td class="news-list-content">
+                            <ul>
+                                {{news_industry_items}}
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+
+                <table cellpadding="0" cellspacing="0" width="100%" style="margin-top: 24px;">
+                    <tr>
+                        <td class="news-list-category">科技新闻</td>
+                        <td class="news-list-content">
+                            <ul>
+                                {{news_tech_items}}
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+            </section>
+
+            <!-- Opinion Section -->
+            <section class="opinion-section">
+                <div class="divider-line"></div>
+                <div class="section-header">
+                    <h2 class="section-title-cn">观点</h2>
+                    <p class="section-title-en">Opinion</p>
+                </div>
+                <div class="opinions-list">
+                    {{opinions_html}}
+                </div>
+            </section>
+
+            <!-- Insight Section -->
+            <section class="insight-section">
+                <div class="divider-line"></div>
+                <div class="section-header">
+                    <h2 class="section-title-cn">关键分析</h2>
+                    <p class="section-title-en">Insight</p>
+                </div>
+                <div class="insights-list">
+                    {{insights_html}}
+                </div>
+            </section>
+
+            <!-- Advice Section -->
+            <section class="advice-section">
+                <div class="divider-line"></div>
+                <div class="section-header">
+                    <h2 class="section-title-cn">建议</h2>
+                    <p class="section-title-en">Advice</p>
+                </div>
+                <div class="advices-list">
+                    {{advices_html}}
+                </div>
+            </section>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>此邮件由 Daily RSS 工具自动生成</p>
+            <p>生成时间：{{timestamp}}</p>
+        </footer>
+    </div>
+</body>
+</html>

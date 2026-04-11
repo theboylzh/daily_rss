@@ -10,11 +10,235 @@ import os
 import json
 import time
 import httpx
+import re
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 from config import settings
-from v2_schema import get_empty_structure, TAGS_LIBRARY
-from v2_parser import parse_ai_json_response, validate_v2_structure
+
+
+# ============================================================================
+# V2 Schema 定义（合并自 v2_schema.py）
+# ============================================================================
+
+# 预设标签库
+TAGS_LIBRARY = [
+    "政治",      # 政府、国际关系
+    "经济",      # 宏观经济、GDP、通胀
+    "科技",      # 技术突破、前沿科技
+    "商业",      # 公司动态、商业合作
+    "金融",      # 银行、证券、保险
+    "国际",      # 国际时事
+    "政策",      # 行业政策、监管
+    "创新",      # 新产品、新技术
+    "行业",      # 行业动态、供需变化
+    "市场"       # 市场波动、股价变化
+]
+
+
+def get_empty_structure() -> Dict[str, Any]:
+    """返回空的 V2 输出结构，用于降级处理"""
+    return {
+        "summary": {
+            "one_liner": "今日暂无新闻摘要",
+            "digest": "今日暂无新闻内容",
+            "keywords": ["暂无", "暂无", "暂无"]
+        },
+        "key_news_brief": [],
+        "briefing": {
+            "politics": "暂无政治新闻",
+            "economy": "暂无经济新闻",
+            "industry": "暂无行业新闻",
+            "tech": "暂无科技新闻"
+        },
+        "perspectives": [],
+        "deep_analysis": [],
+        "suggestions": {
+            "thinking": {"title": "暂无", "content": "暂无相关思维启发"},
+            "investment": {"title": "暂无", "content": "暂无相关投资建议"},
+            "self_improvement": {"title": "暂无", "content": "暂无相关个人提升建议"},
+            "opportunities_risks": {"title": "暂无", "content": "暂无相关机遇风险提示"}
+        }
+    }
+
+
+# ============================================================================
+# V2 Parser 解析工具（合并自 v2_parser.py）
+# ============================================================================
+
+def parse_ai_json_response(text: str) -> Dict[str, Any]:
+    """
+    解析 AI 输出的 JSON，带四层降级策略
+
+    降级流程：
+    1. 直接 JSON 解析
+    2. 提取 Markdown 代码块中的 JSON
+    3. 正则提取 JSON 片段
+    4. 返回空结构 + 记录错误日志
+    """
+    # 第 1 层：直接解析
+    result = _try_direct_parse(text)
+    if result:
+        print("JSON 解析成功：直接解析")
+        return result
+
+    # 第 2 层：提取 Markdown 代码块
+    result = _try_markdown_extract(text)
+    if result:
+        print("JSON 解析成功：Markdown 代码块提取")
+        return result
+
+    # 第 3 层：正则提取 JSON 片段
+    result = _try_regex_extract(text)
+    if result:
+        print("JSON 解析成功：正则提取")
+        return result
+
+    # 第 4 层：返回空结构
+    print(f"JSON 解析全部失败，返回空结构。原始输出前 500 字符：{text[:500]}...")
+    return get_empty_structure()
+
+
+def _try_direct_parse(text: str) -> Optional[Dict[str, Any]]:
+    """尝试直接 JSON 解析"""
+    try:
+        data = json.loads(text)
+        # 验证基本结构 - 只要有 V2 schema 中的任意字段即可
+        if isinstance(data, dict):
+            required_any = ["summary", "key_news_brief", "briefing", "perspectives", "deep_analysis", "suggestions"]
+            if any(field in data for field in required_any):
+                return data
+    except json.JSONDecodeError:
+        pass
+    return None
+
+
+def _try_markdown_extract(text: str) -> Optional[Dict[str, Any]]:
+    """尝试从 Markdown 代码块中提取 JSON"""
+    # 支持 ```json 和 ``` 两种格式
+    patterns = [
+        r'```json\s*(.*?)\s*```',
+        r'```\s*(.*?)\s*```'
+    ]
+
+    for pattern in patterns:
+        match = re.search(pattern, text, re.DOTALL)
+        if match:
+            json_text = match.group(1).strip()
+            try:
+                data = json.loads(json_text)
+                # 只要有 V2 schema 中的任意字段即可
+                if isinstance(data, dict):
+                    required_any = ["summary", "key_news_brief", "briefing", "perspectives", "deep_analysis", "suggestions"]
+                    if any(field in data for field in required_any):
+                        return data
+            except json.JSONDecodeError:
+                continue
+    return None
+
+
+def _try_regex_extract(text: str) -> Optional[Dict[str, Any]]:
+    """尝试用正则提取 JSON 对象"""
+    # 从文本中提取所有可能的 JSON 对象
+    json_objects = _extract_json_objects(text)
+
+    for json_text in json_objects:
+        try:
+            data = json.loads(json_text)
+            if isinstance(data, dict) and "summary" in data:
+                return data
+        except json.JSONDecodeError:
+            continue
+
+    return None
+
+
+def _extract_json_objects(text: str) -> list:
+    """
+    从文本中提取所有可能的 JSON 对象
+    使用括号匹配来找到完整的 JSON 对象
+    """
+    results = []
+    i = 0
+
+    while i < len(text):
+        # 寻找第一个 {
+        if text[i] == '{':
+            start = i
+            bracket_count = 1
+            i += 1
+
+            # 匹配对应的 }
+            while i < len(text) and bracket_count > 0:
+                if text[i] == '{':
+                    bracket_count += 1
+                elif text[i] == '}':
+                    bracket_count -= 1
+                i += 1
+
+            if bracket_count == 0:
+                results.append(text[start:i])
+        else:
+            i += 1
+
+    # 按长度从大到小排序，优先尝试完整的 JSON
+    results.sort(key=len, reverse=True)
+    return results
+
+
+def validate_v2_structure(data: Dict[str, Any]) -> tuple[bool, list]:
+    """
+    验证数据结构是否符合 V2 Schema
+
+    Returns:
+        (是否有效，错误信息列表)
+    """
+    errors = []
+
+    # 检查 summary
+    if "summary" not in data:
+        errors.append("缺少 summary 字段")
+    else:
+        summary = data["summary"]
+        if "one_liner" not in summary:
+            errors.append("缺少 summary.one_liner")
+        if "digest" not in summary:
+            errors.append("缺少 summary.digest")
+        if "keywords" not in summary:
+            errors.append("缺少 summary.keywords")
+
+    # 检查 key_news_brief
+    if "key_news_brief" not in data:
+        errors.append("缺少 key_news_brief 字段")
+
+    # 检查 briefing
+    if "briefing" not in data:
+        errors.append("缺少 briefing 字段")
+    else:
+        briefing = data["briefing"]
+        required_fields = ["politics", "economy", "industry", "tech"]
+        for field in required_fields:
+            if field not in briefing:
+                errors.append(f"缺少 briefing.{field}")
+
+    # 检查 perspectives
+    if "perspectives" not in data:
+        errors.append("缺少 perspectives 字段")
+
+    # 检查 deep_analysis
+    if "deep_analysis" not in data:
+        errors.append("缺少 deep_analysis 字段")
+
+    # 检查 suggestions
+    if "suggestions" not in data:
+        errors.append("缺少 suggestions 字段")
+    else:
+        suggestions = data["suggestions"]
+        required_fields = ["thinking", "investment", "self_improvement", "opportunities_risks"]
+        for field in required_fields:
+            if field not in suggestions:
+                errors.append(f"缺少 suggestions.{field}")
+
+    return len(errors) == 0, errors
 
 
 class AIAnalyzerV2:
@@ -39,8 +263,10 @@ class AIAnalyzerV2:
             "stage1_summary": self._get_stage1_prompt(),
             # 阶段 2：观点生成
             "stage2_perspectives": self._get_stage2_prompt(),
-            # 阶段 2 子任务：新闻摘要生成
+            # 阶段 2 子任务：新闻摘要生成（单条）
             "stage2_news_summary": self._get_news_summary_prompt(),
+            # 阶段 2 子任务：批量新闻摘要生成
+            "stage2_batch_news_summary": self._get_batch_news_summary_prompt(),
             # 阶段 3：深度分析
             "stage3_deep_analysis": self._get_stage3_prompt(),
             # 阶段 4：建议生成
@@ -106,6 +332,39 @@ class AIAnalyzerV2:
 新闻正文：{content}
 
 摘要:
+"""
+
+    def _get_batch_news_summary_prompt(self) -> str:
+        """阶段 2 子任务：批量新闻摘要生成 Prompt"""
+        return """
+任务=批量为以下新闻列表生成摘要。
+
+输入格式=新闻列表，每条新闻包含 title 和 content。
+
+输出要求=必须严格输出纯 JSON 数组格式，不要任何 Markdown 格式。
+
+输出结构=[
+  {
+    "title": "新闻标题",
+    "summary": "新闻摘要（100 字以内）"
+  },
+  {
+    "title": "新闻标题 2",
+    "summary": "新闻摘要 2"
+  }
+]
+
+摘要要求:
+- 每条摘要长度控制在 100 字以内
+- 保留新闻的核心信息（谁、做了什么、结果/影响）
+- 语言简洁、客观
+- JSON 数组长度必须与输入新闻数量一致
+
+注意事项:
+- JSON 格式必须正确，能被直接解析
+- 不要遗漏任何一条新闻
+
+新闻列表:
 """
 
     def _get_stage2_prompt(self) -> str:
@@ -283,7 +542,8 @@ class AIAnalyzerV2:
 
             print(f"发送 AI 请求...")
 
-            with httpx.Client() as client:
+            # 禁用代理自动检测，使用直连
+            with httpx.Client(trust_env=False) as client:
                 response = client.post(
                     self.api_url,
                     headers=headers,
@@ -342,19 +602,34 @@ class AIAnalyzerV2:
             print("无重点新闻，跳过阶段 2")
             return None
 
-        # 步骤 1：为每条新闻生成摘要
-        print(f"为 {len(key_news_list)} 条新闻生成摘要...")
+        # 步骤 1：批量生成新闻摘要（优化：1 次 API 调用替代多次）
+        test_news = key_news_list[:10]  # 最多 10 条
+        print(f"批量为 {len(test_news)} 条新闻生成摘要...")
+
+        batch_result = self._generate_batch_news_summary(test_news)
+
+        # 解析批量结果
         summaries = []
         references = []
+        if batch_result:
+            for item in batch_result:
+                title = item.get("title", "未知标题")
+                summary = item.get("summary", "")
+                if summary:
+                    summaries.append(summary)
+                    references.append({"title": title, "url": test_news[0].get("url", "")})
 
-        for news in key_news_list[:10]:  # 最多 10 条
-            summary = self._generate_news_summary(news)
-            if summary:
-                summaries.append(summary)
-                references.append({
-                    "title": news.get("title", "未知标题"),
-                    "url": news.get("url", "")
-                })
+        # 如果批量摘要失败，降级为单条生成
+        if not summaries:
+            print("批量摘要失败，降级为单条生成...")
+            for news in test_news:
+                summary = self._generate_news_summary(news)
+                if summary:
+                    summaries.append(summary)
+                    references.append({
+                        "title": news.get("title", "未知标题"),
+                        "url": news.get("url", "")
+                    })
 
         # 步骤 2：汇总摘要形成素材包
         summary_package = "\n---\n".join(summaries)
@@ -406,7 +681,7 @@ class AIAnalyzerV2:
                 "max_tokens": 200
             }
 
-            with httpx.Client() as client:
+            with httpx.Client(trust_env=False) as client:
                 response = client.post(
                     self.api_url,
                     headers=headers,
@@ -421,6 +696,80 @@ class AIAnalyzerV2:
 
         except Exception as e:
             print(f"生成新闻摘要失败：{e}")
+
+        return None
+
+    def _generate_batch_news_summary(self, news_list: List[Dict[str, Any]]) -> Optional[List[Dict[str, str]]]:
+        """批量生成新闻摘要（优化：1 次 API 调用处理多条新闻）"""
+        try:
+            # 构建输入文本
+            input_text = ""
+            for i, news in enumerate(news_list, 1):
+                title = news.get("title", "未知标题")
+                content = news.get("content", "")[:500]  # 限制长度
+                input_text += f"{i}. 标题：{title}\n   内容：{content}\n\n"
+
+            prompt = self.prompts["stage2_batch_news_summary"] + "\n" + input_text
+
+            # 直接调用 API（不经过 parse_ai_json_response，因为它会尝试匹配 V2 schema）
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
+
+            payload = {
+                "model": self.model,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+                "max_tokens": 2000
+            }
+
+            print("发送批量摘要请求...")
+            with httpx.Client(trust_env=False) as client:
+                response = client.post(
+                    self.api_url,
+                    headers=headers,
+                    json=payload,
+                    timeout=60.0
+                )
+
+            if response.status_code != 200:
+                print(f"批量摘要 API 失败：{response.status_code}")
+                return None
+
+            response_text = response.json()['choices'][0]['message']['content']
+
+            # 尝试直接解析 JSON 数组
+            try:
+                result = json.loads(response_text)
+                if isinstance(result, list):
+                    print(f"批量摘要成功：获得 {len(result)} 条摘要")
+                    return result
+                elif isinstance(result, dict) and "summaries" in result:
+                    # 处理包装格式
+                    print(f"批量摘要成功：获得 {len(result['summaries'])} 条摘要")
+                    return result["summaries"]
+            except json.JSONDecodeError:
+                pass
+
+            # 尝试从 Markdown 代码块提取
+            import re
+            match = re.search(r'```(?:json)?\s*(.*?)\s*```', response_text, re.DOTALL)
+            if match:
+                json_text = match.group(1).strip()
+                try:
+                    result = json.loads(json_text)
+                    if isinstance(result, list):
+                        print(f"批量摘要成功（Markdown 提取）：获得 {len(result)} 条摘要")
+                        return result
+                except json.JSONDecodeError:
+                    pass
+
+            print("批量摘要解析失败：无法提取 JSON 数组")
+            return None
+
+        except Exception as e:
+            print(f"批量生成摘要失败：{e}")
 
         return None
 
