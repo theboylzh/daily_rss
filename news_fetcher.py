@@ -1,5 +1,4 @@
 import os
-import json
 import time
 import ssl
 import feedparser
@@ -9,12 +8,14 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from subscription_manager import SubscriptionManager
 from config import settings
+from storage_manager import StorageManager
 
 
 class NewsFetcher:
     def __init__(self):
         self.subscription_manager = SubscriptionManager()
-        self.news_dir = settings.NEWS_DIR
+        self.storage = StorageManager()
+        self.news_dir = settings.RAW_NEWS_DIR
         os.makedirs(self.news_dir, exist_ok=True)
         
         # RSSHub实例列表，按优先级排序
@@ -58,7 +59,7 @@ class NewsFetcher:
         else:
             print(f"成功获取 {len(recent_news)} 条24小时内的新闻")
         
-        # 存储新闻
+        # 存储 raw_news
         self._save_news(recent_news)
         
         return recent_news
@@ -377,7 +378,7 @@ class NewsFetcher:
     def _generate_id(self, url: str) -> str:
         """根据URL生成唯一ID"""
         import hashlib
-        return hashlib.md5(url.encode()).hexdigest()
+        return f"news_{hashlib.md5(url.encode()).hexdigest()}"
     
     def _deduplicate_news(self, news_items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """去重新闻"""
@@ -418,27 +419,25 @@ class NewsFetcher:
         return recent_news
     
     def _save_news(self, news_items: List[Dict[str, Any]]):
-        """保存新闻到文件"""
+        """保存 raw_news 到 V3 目录结构"""
         today = datetime.now().strftime('%Y-%m-%d')
-        news_file = os.path.join(self.news_dir, f"{today}.json")
-        
-        # 读取现有新闻（如果有）
-        existing_news = []
-        if os.path.exists(news_file):
-            try:
-                with open(news_file, 'r', encoding='utf-8') as f:
-                    existing_news = json.load(f)
-            except Exception as e:
-                print(f"读取现有新闻失败: {e}")
-        
-        # 合并新闻并去重
+        news_file = self.storage.get_raw_news_path(today)
+
+        existing_payload = self.storage.read_json(
+            news_file,
+            default={"date": today, "source_type": "daily", "news": []},
+        )
+        existing_news = existing_payload.get("news", []) if isinstance(existing_payload, dict) else []
         all_news = existing_news + news_items
         unique_news = self._deduplicate_news(all_news)
-        
-        # 保存到文件
-        with open(news_file, 'w', encoding='utf-8') as f:
-            json.dump(unique_news, f, ensure_ascii=False, indent=2)
-    
+
+        payload = {
+            "date": today,
+            "source_type": "daily",
+            "news": unique_news,
+        }
+        self.storage.write_json(news_file, payload)
+
     def get_recent_news(self, days: int = 1) -> List[Dict[str, Any]]:
         """获取最近几天的新闻"""
         recent_news = []
@@ -451,9 +450,9 @@ class NewsFetcher:
                     file_date = datetime.strptime(filename[:-5], '%Y-%m-%d')
                     if file_date >= threshold_date:
                         file_path = os.path.join(self.news_dir, filename)
-                        with open(file_path, 'r', encoding='utf-8') as f:
-                            news_items = json.load(f)
-                            recent_news.extend(news_items)
+                        payload = self.storage.read_json(file_path, default={})
+                        if isinstance(payload, dict):
+                            recent_news.extend(payload.get("news", []))
                 except Exception as e:
                     print(f"读取新闻文件失败 {filename}: {e}")
         

@@ -1,13 +1,8 @@
-import os
 import sys
 import logging
-import traceback
-from datetime import datetime
 from subscription_manager import SubscriptionManager
-from news_fetcher import NewsFetcher
-from ai_analyzer_v2 import AIAnalyzerV2
-from push_manager import PushManager
-from config import settings
+from workflow_runner import WorkflowRunner
+from daily_report_service import DailyReportService
 
 # 配置日志
 logging.basicConfig(
@@ -20,61 +15,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 def main():
-    """主程序入口"""
-    logger.info("Daily RSS 工具启动")
-
-    try:
-        # 1. 抓取新闻
-        logger.info("开始抓取新闻...")
-        news_fetcher = NewsFetcher()
-        news_items = news_fetcher.fetch_news()
-
-        if not news_items:
-            logger.warning("无新闻可分析")
-            return
-
-        # 2. 分析新闻
-        logger.info("开始分析新闻...")
-        ai_analyzer = AIAnalyzerV2()
-        analysis_result = ai_analyzer.analyze_daily_news_v2(news_items)
-
-        if not analysis_result:
-            logger.warning("分析失败")
-            return
-
-        # 3. 推送分析结果
-        logger.info("开始推送分析结果...")
-        push_manager = PushManager()
-        push_success = push_manager.send_daily_analysis(analysis_result)
-
-        if not push_success:
-            logger.warning("推送失败")
-            return
-
-        # 4. 清理过期数据
-        logger.info("开始清理过期数据...")
-        news_fetcher.clean_old_news()
-
-        logger.info("Daily RSS 工具执行完成")
-
-    except Exception as e:
-        logger.error(f"执行失败：{e}", exc_info=True)
-        # 尝试发送错误通知邮件
-        try:
-            push_manager = PushManager()
-            error_analysis = {
-                "date": datetime.now().strftime('%Y-%m-%d'),
-                "first_layer": f"# 执行错误\n\n系统执行失败：{str(e)}",
-                "second_layer": [],
-                "third_layer": f"# 错误详情\n\n{traceback.format_exc()}",
-                "timestamp": datetime.now().isoformat(),
-                "news_count": 0
-            }
-            push_manager.send_daily_analysis(error_analysis)
-        except Exception as notify_error:
-            logger.error(f"发送错误通知失败：{notify_error}")
+    WorkflowRunner().run_daily()
 
 
 
@@ -134,8 +76,8 @@ def list_subscriptions():
 
 
 def test_ai_analysis():
-    """独立测试 AI 分析功能（V2）"""
-    logger.info("开始测试 AI 分析功能...")
+    """独立测试 V3 daily 分析功能。"""
+    logger.info("开始测试 V3 AI 分析功能...")
 
     try:
         # 模拟新闻数据
@@ -162,45 +104,24 @@ def test_ai_analysis():
 
         print(f"模拟了 {len(mock_news)} 条新闻用于测试")
 
-        # 创建 AI 分析器（V2）
-        ai_analyzer = AIAnalyzerV2()
+        from news_processor import NewsProcessor
 
-        # 测试完整的每日分析（V2 四层架构）
-        print("\n测试完整的每日分析（V2 四层架构）:")
-        analysis_result = ai_analyzer.analyze_daily_news_v2(mock_news)
-        print(f"分析完成，结果包含：{list(analysis_result.keys())}")
+        processor = NewsProcessor()
+        filter_payload = processor.process_news(mock_news, date_str="2026-02-14")
+        analysis_result = DailyReportService().build(filter_payload, raw_news_count=len(mock_news))
 
-        # 打印 V2 分析结果
-        print(f"\n【一句话总结】")
-        print(analysis_result.get('summary', {}).get('one_liner', '缺失'))
+        print(f"\n【主结论】{analysis_result.get('signal_interpretation', {}).get('main_conclusion', '缺失')}")
+        print(f"\n【Top Signals】{len(analysis_result.get('signal_interpretation', {}).get('top_signals', []))} 条")
+        print(f"\n【深度分析】{len(analysis_result.get('deep_analysis', []))} 条")
+        print(f"\n【候选项】{analysis_result.get('internal_candidates', {})}")
 
-        print(f"\n【关键词】")
-        print(analysis_result.get('summary', {}).get('keywords', []))
-
-        print(f"\n【关键新闻】")
-        for i, news in enumerate(analysis_result.get('key_news_brief', [])[:3], 1):
-            print(f"  {i}. {news.get('title', '无标题')}")
-
-        print(f"\n【观点】")
-        for i, p in enumerate(analysis_result.get('perspectives', [])[:3], 1):
-            print(f"  {i}. {p.get('title', '无标题')}")
-
-        print(f"\n【深度分析】")
-        for i, a in enumerate(analysis_result.get('deep_analysis', [])[:3], 1):
-            print(f"  {i}. {a.get('title', '无标题')}")
-
-        print(f"\n【建议】")
-        suggestions = analysis_result.get('suggestions', {})
-        print(f"  思维启发：{suggestions.get('thinking', {}).get('title', '缺失')}")
-        print(f"  投资建议：{suggestions.get('investment', {}).get('title', '缺失')}")
-
-        logger.info("AI 分析功能测试完成")
+        logger.info("V3 AI 分析功能测试完成")
 
     except Exception as e:
         logger.error(f"测试 AI 分析功能失败：{e}", exc_info=True)
 
-
 if __name__ == "__main__":
+    runner = WorkflowRunner()
     # 解析命令行参数
     if len(sys.argv) > 1:
         command = sys.argv[1]
@@ -222,9 +143,13 @@ if __name__ == "__main__":
             list_subscriptions()
         elif command == "ai-test":
             test_ai_analysis()
+        elif command == "daily":
+            runner.run_daily()
+        elif command == "send-v3-daily":
+            runner.send_v3_daily_email(sys.argv[2] if len(sys.argv) > 2 else None)
         else:
             print(f"未知命令：{command}")
-            print("可用命令：add, remove, list, ai-test")
+            print("可用命令：add, remove, list, ai-test, daily, send-v3-daily")
     else:
         # 执行默认的每日任务
         main()

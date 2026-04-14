@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend Radar V3 - Pure Notion</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #ffffff;
+            color: #37352f;
+            line-height: 1.6;
+            padding: 48px 0 80px;
+        }
+        .container { max-width: 900px; margin: 0 auto; padding: 0 96px; }
+
+        /* Header */
+        .breadcrumb {
+            font-size: 14px;
+            color: #9ca3af;
+            margin-bottom: 8px;
+        }
+        .breadcrumb span { color: #37352f; font-weight: 500; }
+        .page-icon { font-size: 48px; margin-bottom: 12px; }
+        h1 {
+            font-size: 40px;
+            font-weight: 700;
+            color: #37352f;
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+        .page-meta {
+            display: flex;
+            gap: 16px;
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 32px;
+        }
+
+        /* Notion blocks */
+        .block { margin-bottom: 4px; }
+        .h1 {
+            font-size: 30px;
+            font-weight: 600;
+            color: #37352f;
+            margin: 48px 0 20px;
+            letter-spacing: -0.3px;
+        }
+        .h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #37352f;
+            margin: 36px 0 16px;
+        }
+        .h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #37352f;
+            margin: 28px 0 12px;
+        }
+        .text {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #37352f;
+            margin-bottom: 12px;
+        }
+
+        /* Callout - Notion style */
+        .callout {
+            display: flex;
+            gap: 12px;
+            padding: 16px 20px;
+            background: #f7f6f3;
+            border-radius: 8px;
+            margin: 16px 0;
+        }
+        .callout-icon { font-size: 20px; flex-shrink: 0; }
+        .callout-content { font-size: 16px; line-height: 1.6; color: #37352f; }
+        .callout-content strong { font-weight: 600; }
+        .callout-content .title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        /* Divider */
+        .divider {
+            height: 1px;
+            background: #e9e9e7;
+            margin: 32px 0;
+        }
+
+        /* Bullet list */
+        .bullet-list { margin: 8px 0; padding-left: 4px; }
+        .bullet-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 6px 0;
+            font-size: 16px;
+        }
+        .bullet-dot {
+            width: 6px;
+            height: 6px;
+            background: #37352f;
+            border-radius: 50%;
+            margin-top: 10px;
+            flex-shrink: 0;
+        }
+        .bullet-content { flex: 1; }
+        .bullet-content strong { font-weight: 600; }
+
+        /* Signal Cards - Notion database style */
+        .db-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+        }
+        .db-card {
+            background: #f7f6f3;
+            border-radius: 8px;
+            padding: 16px;
+            border: 1px solid #e9e9e7;
+            transition: box-shadow 0.2s;
+        }
+        .db-card:hover {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .db-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .db-tag {
+            font-size: 12px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        .db-score {
+            background: #e3f2e0;
+            color: #2b7a3a;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .db-card h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            line-height: 1.4;
+            color: #37352f;
+        }
+        .db-field {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        .db-value {
+            font-size: 14px;
+            color: #37352f;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        .db-highlight {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #e9e9e7;
+            font-size: 13px;
+            color: #2b7a3a;
+            font-weight: 500;
+        }
+
+        /* Simple table */
+        .table {
+            width: 100%;
+            margin: 16px 0;
+            border-collapse: collapse;
+        }
+        .table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e9e9e7;
+            font-size: 15px;
+            vertical-align: top;
+        }
+        .table td:first-child {
+            font-weight: 600;
+            width: 140px;
+            color: #37352f;
+        }
+        .table tr:hover td {
+            background: #f7f6f3;
+        }
+        .table .muted {
+            color: #9ca3af;
+            font-style: italic;
+        }
+
+        /* Trend cards - Notion toggle style */
+        .toggle {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 6px 0;
+            cursor: pointer;
+        }
+        .toggle-arrow {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #9ca3af;
+            font-size: 12px;
+            margin-top: 2px;
+        }
+        .toggle-content {
+            flex: 1;
+            font-size: 16px;
+            color: #37352f;
+            font-weight: 500;
+        }
+        .trend-card {
+            background: #faf9f8;
+            border-left: 3px solid #e9e9e7;
+            padding: 16px 20px;
+            margin: 12px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .trend-title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #37352f;
+        }
+        .trend-desc {
+            font-size: 15px;
+            color: #6b7280;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+        .trend-impact {
+            font-size: 14px;
+            color: #2b7a3a;
+            font-weight: 500;
+        }
+
+        /* Todo columns */
+        .columns {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .column h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            margin-top: 0;
+        }
+        .todo-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 0;
+            font-size: 15px;
+            border-bottom: 1px solid #f0f0ef;
+        }
+        .todo-item:last-child { border-bottom: none; }
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #d1d1cf;
+            border-radius: 4px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .todo-text {
+            flex: 1;
+            line-height: 1.5;
+            color: #37352f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="breadcrumb">Daily RSS / <span>Trend Radar</span> / 2026-04-14</div>
+        <div class="page-icon">📡</div>
+        <h1>Trend Radar</h1>
+        <div class="page-meta">
+            <span>📅 April 14, 2026</span>
+            <span>📊 42 sources → 18 selected</span>
+        </div>
+
+        <!-- Key Insight -->
+        <div class="callout">
+            <span class="callout-icon">💡</span>
+            <div class="callout-content">
+                <span class="title">Key Insight</span>
+                AI coding assistants are evolving from "autocomplete" to "autonomous partners". Developer roles need redefinition: coding skills are devaluing while problem-definition, AI output review, and system design become critical.
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Signal Interpretation -->
+        <div class="h1">🔍 Signal Interpretation</div>
+
+        <div class="h2">Top Signals</div>
+        <div class="db-grid">
+            <div class="db-card">
+                <div class="db-header">
+                    <span class="db-tag">Signal 1</span>
+                    <span class="db-score">9.0</span>
+                </div>
+                <h4>Claude Code Reshapes Dev Workflow</h4>
+                <div class="db-field">Event</div>
+                <div class="db-value">Anthropic releases CLI tool for autonomous coding</div>
+                <div class="db-field">Signal</div>
+                <div class="db-value">AI becomes independent development partner</div>
+                <div class="db-highlight">→ Learn natural language programming</div>
+            </div>
+            <div class="db-card">
+                <div class="db-header">
+                    <span class="db-tag">Signal 2</span>
+                    <span class="db-score">8.0</span>
+                </div>
+                <h4>AI-Native Patterns Emerging</h4>
+                <div class="db-field">Event</div>
+                <div class="db-value">PMs discuss new interaction models beyond chat</div>
+                <div class="db-field">Signal</div>
+                <div class="db-value">Breaking free from conversation interfaces</div>
+                <div class="db-highlight">→ Redefine product design approach</div>
+            </div>
+            <div class="db-card">
+                <div class="db-header">
+                    <span class="db-tag">Signal 3</span>
+                    <span class="db-score">8.0</span>
+                </div>
+                <h4>Multimodal Becomes Standard</h4>
+                <div class="db-field">Event</div>
+                <div class="db-value">Major AI firms announce multimodal capabilities</div>
+                <div class="db-field">Signal</div>
+                <div class="db-value">Cross-modal understanding is table stakes</div>
+                <div class="db-highlight">→ Develop cross-modal expression</div>
+            </div>
+        </div>
+
+        <div class="h2">Six Dimensions Brief</div>
+        <table class="table">
+            <tr>
+                <td>🧠 Models</td>
+                <td>Open-source catches up; GPT-4.5 level becomes accessible to all</td>
+            </tr>
+            <tr>
+                <td>💬 AI Products</td>
+                <td>Agent products launching; interaction patterns actively evolving</td>
+            </tr>
+            <tr>
+                <td>🎨 Design</td>
+                <td class="muted">No significant movement</td>
+            </tr>
+            <tr>
+                <td>⚙️ Platform</td>
+                <td>Vercel releases new AI SDK for agent workflows</td>
+            </tr>
+            <tr>
+                <td>💼 Business</td>
+                <td>Funding cooling; shift from growth to revenue focus</td>
+            </tr>
+            <tr>
+                <td>📜 Policy</td>
+                <td class="muted">No significant movement</td>
+            </tr>
+        </table>
+
+        <div class="divider"></div>
+
+        <!-- Deep Analysis -->
+        <div class="h1">🧠 Deep Analysis</div>
+
+        <div class="trend-card">
+            <div class="trend-title">Trend 1: AI Coding — From Assistant to Agent</div>
+            <div class="trend-desc">Multiple AI coding tools are evolving from simple code completion to autonomous task completion—debugging, refactoring, building full features independently.</div>
+            <div class="bullet-list">
+                <div class="bullet-item">
+                    <div class="bullet-dot"></div>
+                    <div class="bullet-content"><strong>Impact:</strong> Need to shift from coding to problem-definition and system design</div>
+                </div>
+                <div class="bullet-item">
+                    <div class="bullet-dot"></div>
+                    <div class="bullet-content"><strong>Watch:</strong> How autonomous coding tools evolve over next 3 months</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="trend-card">
+            <div class="trend-title">Trend 2: Interaction Paradigm Still Exploring</div>
+            <div class="trend-desc">Beyond chat interfaces: canvas modes, project-based workflows, multimodal interactions being actively explored by product teams.</div>
+            <div class="bullet-list">
+                <div class="bullet-item">
+                    <div class="bullet-dot"></div>
+                    <div class="bullet-content"><strong>Impact:</strong> Window to define new paradigms as designers/creators</div>
+                </div>
+                <div class="bullet-item">
+                    <div class="bullet-dot"></div>
+                    <div class="bullet-content"><strong>Watch:</strong> Which interaction patterns gain traction in Q2-Q3</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Action Suggestions -->
+        <div class="h1">🎯 Action Suggestions</div>
+
+        <div class="columns">
+            <div class="column">
+                <h4>Today</h4>
+                <div class="todo-item">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">Read Claude Code documentation</div>
+                </div>
+                <div class="todo-item">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">Describe a feature in natural language</div>
+                </div>
+            </div>
+            <div class="column">
+                <h4>This Week</h4>
+                <div class="todo-item">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">Analyze 3 AI-Native products</div>
+                </div>
+                <div class="todo-item">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">Design a tool prototype</div>
+                </div>
+            </div>
+            <div class="column">
+                <h4>This Month</h4>
+                <div class="todo-item">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">Complete AI-assisted project</div>
+                </div>
+                <div class="todo-item">
+                    <div class="checkbox"></div>
+                    <div class="todo-text">Write 2 AI product analyses</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

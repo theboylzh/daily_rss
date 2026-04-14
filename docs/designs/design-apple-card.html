@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend Radar V3 - Apple Card Focus</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(180deg, #f5f5f7 0%, #efeff4 100%);
+            color: #1d1d1f;
+            line-height: 1.5;
+            padding: 60px 0 100px;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 40px; }
+
+        /* Hero - Apple keynote style */
+        .hero {
+            text-align: center;
+            padding: 60px 0 60px;
+        }
+        .hero-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            display: inline-block;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1));
+        }
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(20px);
+            padding: 12px 24px;
+            border-radius: 100px;
+            font-size: 15px;
+            font-weight: 500;
+            color: #86868b;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        }
+        .hero-badge .dot {
+            width: 10px;
+            height: 10px;
+            background: linear-gradient(135deg, #34c759 0%, #30b34f 100%);
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(52, 199, 89, 0.4);
+        }
+        h1 {
+            font-size: 56px;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .hero-subtitle {
+            font-size: 24px;
+            color: #86868b;
+            font-weight: 400;
+            margin-bottom: 28px;
+        }
+        .hero-meta {
+            display: flex;
+            justify-content: center;
+            gap: 32px;
+            font-size: 16px;
+            color: #86868b;
+        }
+        .hero-meta span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.6);
+            padding: 8px 16px;
+            border-radius: 100px;
+        }
+
+        /* Section - Large Apple cards with depth */
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 28px;
+            padding: 48px;
+            margin-bottom: 28px;
+            box-shadow:
+                0 4px 6px rgba(0, 0, 0, 0.02),
+                0 8px 24px rgba(0, 0, 0, 0.06),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        .section-header {
+            margin-bottom: 32px;
+            text-align: center;
+        }
+        .section-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+        .section-title {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            color: #1d1d1f;
+        }
+
+        /* Key Insight - Premium Apple card */
+        .insight-box {
+            background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%);
+            border-radius: 24px;
+            padding: 36px 40px;
+            margin: 24px 0;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 113, 227, 0.3);
+        }
+        .insight-box::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+            pointer-events: none;
+        }
+        .insight-label {
+            font-size: 13px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.8);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            position: relative;
+        }
+        .insight-title {
+            font-size: 26px;
+            font-weight: 600;
+            color: #ffffff;
+            line-height: 1.3;
+            margin-bottom: 14px;
+            position: relative;
+        }
+        .insight-desc {
+            font-size: 17px;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.6;
+            position: relative;
+        }
+
+        /* Signal Cards - Premium Apple grid */
+        .signals-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 24px;
+        }
+        .signal-card {
+            background: linear-gradient(180deg, #fafafa 0%, #f5f5f7 100%);
+            border-radius: 24px;
+            padding: 28px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.04),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .signal-card:hover {
+            transform: translateY(-4px);
+            box-shadow:
+                0 8px 24px rgba(0, 0, 0, 0.08),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        .signal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .signal-tag {
+            font-size: 11px;
+            font-weight: 700;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .signal-score {
+            background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%);
+            color: #fff;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+        }
+        .signal-card h4 {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 18px;
+            line-height: 1.4;
+        }
+        .signal-field { margin-bottom: 12px; }
+        .signal-field .label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #86868b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .signal-field .value {
+            font-size: 14px;
+            color: #1d1d1f;
+            line-height: 1.5;
+        }
+        .signal-highlight {
+            margin-top: 18px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            font-size: 14px;
+            color: #0071e3;
+            font-weight: 600;
+        }
+
+        /* Dimensions - Apple list style */
+        .dimensions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 24px;
+        }
+        .dimension-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #fafafa;
+            border-radius: 16px;
+            padding: 20px 24px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        .dimension-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, #f5f5f7 0%, #e8e8ed 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+        .dimension-content { flex: 1; }
+        .dimension-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 4px;
+        }
+        .dimension-desc {
+            font-size: 14px;
+            color: #86868b;
+            line-height: 1.4;
+        }
+        .dimension-status {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .dimension-status.active {
+            color: #34c759;
+            background: rgba(52, 199, 89, 0.1);
+        }
+        .dimension-status.watch {
+            color: #ff9500;
+            background: rgba(255, 149, 0, 0.1);
+        }
+        .dimension-status.muted {
+            color: #c4c4c4;
+            background: #f5f5f7;
+        }
+
+        /* Trend Cards - Apple feature cards */
+        .trend-card {
+            background: linear-gradient(180deg, #fafafa 0%, #f5f5f7 100%);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        .trend-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        .trend-number {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #1d1d1f 0%, #3a3a3c 100%);
+            color: #fff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        .trend-card h3 {
+            font-size: 21px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+        .trend-card p {
+            font-size: 16px;
+            color: #6e6e73;
+            line-height: 1.7;
+            margin-bottom: 18px;
+        }
+        .trend-impact {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 15px;
+            color: #0071e3;
+            font-weight: 600;
+            background: rgba(0, 113, 227, 0.08);
+            padding: 8px 16px;
+            border-radius: 100px;
+        }
+        .trend-details {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .trend-details .bullet-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            font-size: 15px;
+            color: #1d1d1f;
+        }
+        .trend-details .bullet-item:last-child { margin-bottom: 0; }
+        .trend-details .bullet-dot {
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, #0071e3 0%, #005bb5 100%);
+            border-radius: 50%;
+            margin-top: 7px;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0, 113, 227, 0.4);
+        }
+
+        /* Action Columns - Apple action cards */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 24px;
+        }
+        .action-column {
+            background: linear-gradient(180deg, #fafafa 0%, #f5f5f7 100%);
+            border-radius: 24px;
+            padding: 28px;
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+        .action-column h4 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #86868b;
+            text-align: center;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .action-item {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: transform 0.2s;
+        }
+        .action-item:hover {
+            transform: scale(1.02);
+        }
+        .action-item:last-child { margin-bottom: 0; }
+        .action-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 6px;
+        }
+        .action-desc {
+            font-size: 13px;
+            color: #86868b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero -->
+        <div class="hero">
+            <div class="hero-icon">📡</div>
+            <div class="hero-badge">
+                <span class="dot"></span>
+                <span>Daily Intelligence Report</span>
+            </div>
+            <h1>Trend Radar</h1>
+            <p class="hero-subtitle">AI & Technology Intelligence for Builders</p>
+            <div class="hero-meta">
+                <span>📅 April 14, 2026</span>
+                <span>📊 42 sources → 18 selected</span>
+            </div>
+        </div>
+
+        <!-- Key Insight -->
+        <div class="section">
+            <div class="insight-box">
+                <div class="insight-label">Key Insight</div>
+                <h2 class="insight-title">AI coding assistants are evolving from autocomplete to autonomous partners</h2>
+                <p class="insight-desc">Developer roles need redefinition. Coding skills are devaluing while problem-definition, AI output review, and system design become critical differentiators.</p>
+            </div>
+        </div>
+
+        <!-- Signal Interpretation -->
+        <div class="section">
+            <div class="section-header">
+                <p class="section-label">Signal Interpretation</p>
+                <h2 class="section-title">Strategic Signals</h2>
+            </div>
+
+            <div class="signals-grid">
+                <div class="signal-card">
+                    <div class="signal-header">
+                        <span class="signal-tag">Signal 1</span>
+                        <div class="signal-score">9.0</div>
+                    </div>
+                    <h4>Claude Code Reshapes Dev Workflow</h4>
+                    <div class="signal-field">
+                        <div class="label">Event</div>
+                        <div class="value">Anthropic releases autonomous CLI coding tool</div>
+                    </div>
+                    <div class="signal-field">
+                        <div class="label">Signal</div>
+                        <div class="value">AI evolves from assistant to independent development partner</div>
+                    </div>
+                    <div class="signal-highlight">→ Master natural language programming</div>
+                </div>
+                <div class="signal-card">
+                    <div class="signal-header">
+                        <span class="signal-tag">Signal 2</span>
+                        <div class="signal-score">8.0</div>
+                    </div>
+                    <h4>AI-Native Patterns Emerging</h4>
+                    <div class="signal-field">
+                        <div class="label">Event</div>
+                        <div class="value">Product leaders explore post-chat interfaces</div>
+                    </div>
+                    <div class="signal-field">
+                        <div class="label">Signal</div>
+                        <div class="value">Industry breaking free from conversation paradigms</div>
+                    </div>
+                    <div class="signal-highlight">→ Redefine your product design approach</div>
+                </div>
+                <div class="signal-card">
+                    <div class="signal-header">
+                        <span class="signal-tag">Signal 3</span>
+                        <div class="signal-score">8.0</div>
+                    </div>
+                    <h4>Multimodal Becomes Standard</h4>
+                    <div class="signal-field">
+                        <div class="label">Event</div>
+                        <div class="value">All major AI firms announce multimodal capabilities</div>
+                    </div>
+                    <div class="signal-field">
+                        <div class="label">Signal</div>
+                        <div class="value">Cross-modal understanding is now table stakes</div>
+                    </div>
+                    <div class="signal-highlight">→ Develop cross-modal expression skills</div>
+                </div>
+            </div>
+
+            <div class="section-header" style="margin-top: 40px;">
+                <h3 style="font-size: 22px; font-weight: 600; margin-bottom: 20px;">Six Dimensions Brief</h3>
+            </div>
+            <div class="dimensions-grid">
+                <div class="dimension-card">
+                    <div class="dimension-icon">🧠</div>
+                    <div class="dimension-content">
+                        <div class="dimension-name">Models</div>
+                        <div class="dimension-desc">Open-source catches up to closed</div>
+                    </div>
+                    <div class="dimension-status active">Active</div>
+                </div>
+                <div class="dimension-card">
+                    <div class="dimension-icon">💬</div>
+                    <div class="dimension-content">
+                        <div class="dimension-name">AI Products</div>
+                        <div class="dimension-desc">Agent wave launching</div>
+                    </div>
+                    <div class="dimension-status active">Active</div>
+                </div>
+                <div class="dimension-card">
+                    <div class="dimension-icon">🎨</div>
+                    <div class="dimension-content">
+                        <div class="dimension-name">Design</div>
+                        <div class="dimension-desc">Quiet today</div>
+                    </div>
+                    <div class="dimension-status muted">—</div>
+                </div>
+                <div class="dimension-card">
+                    <div class="dimension-icon">⚙️</div>
+                    <div class="dimension-content">
+                        <div class="dimension-name">Platform</div>
+                        <div class="dimension-desc">Vercel AI SDK update</div>
+                    </div>
+                    <div class="dimension-status active">Active</div>
+                </div>
+                <div class="dimension-card">
+                    <div class="dimension-icon">💼</div>
+                    <div class="dimension-content">
+                        <div class="dimension-name">Business</div>
+                        <div class="dimension-desc">Revenue > growth focus</div>
+                    </div>
+                    <div class="dimension-status watch">Watch</div>
+                </div>
+                <div class="dimension-card">
+                    <div class="dimension-icon">📜</div>
+                    <div class="dimension-content">
+                        <div class="dimension-name">Policy</div>
+                        <div class="dimension-desc">Quiet today</div>
+                    </div>
+                    <div class="dimension-status muted">—</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deep Analysis -->
+        <div class="section">
+            <div class="section-header">
+                <p class="section-label">Deep Analysis</p>
+                <h2 class="section-title">Trend Insights</h2>
+            </div>
+
+            <div class="trend-card">
+                <div class="trend-header">
+                    <div class="trend-number">1</div>
+                    <h3>AI Coding: From Assistant to Agent</h3>
+                </div>
+                <p>AI coding tools are undergoing a fundamental transformation—from simple code completion to autonomous task execution. Modern tools can debug, refactor, and build entire features independently without human intervention.</p>
+                <div class="trend-impact">
+                    <span>→ Impact</span>
+                    <span>Shift from coding to problem-definition and system design</span>
+                </div>
+                <div class="trend-details">
+                    <div class="bullet-item">
+                        <div class="bullet-dot"></div>
+                        <div><strong>Watch Point:</strong> Track autonomous coding capabilities evolution over the next 3 months</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="trend-card">
+                <div class="trend-header">
+                    <div class="trend-number">2</div>
+                    <h3>Interaction Paradigm Still Exploring</h3>
+                </div>
+                <p>The industry is actively exploring what comes after chat. Canvas-based collaboration, project-centric workflows, and seamless multimodal interactions are all being tested by leading product teams.</p>
+                <div class="trend-impact">
+                    <span>→ Impact</span>
+                    <span>Prime window to define new paradigms as designers and creators</div>
+                </div>
+                <div class="trend-details">
+                    <div class="bullet-item">
+                        <div class="bullet-dot"></div>
+                        <div><strong>Watch Point:</strong> Monitor which interaction patterns gain real traction in Q2-Q3 2026</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Suggestions -->
+        <div class="section">
+            <div class="section-header">
+                <p class="section-label">Action Suggestions</p>
+                <h2 class="section-title">Your Action Plan</h2>
+            </div>
+
+            <div class="actions-grid">
+                <div class="action-column">
+                    <h4>Today</h4>
+                    <div class="action-item">
+                        <div class="action-title">Read Claude Code docs</div>
+                        <div class="action-desc">30 min deep dive</div>
+                    </div>
+                    <div class="action-item">
+                        <div class="action-title">Describe feature in natural language</div>
+                        <div class="action-desc">Practice prompt craft</div>
+                    </div>
+                </div>
+                <div class="action-column">
+                    <h4>This Week</h4>
+                    <div class="action-item">
+                        <div class="action-title">Analyze 3 AI-Native products</div>
+                        <div class="action-desc">Pattern recognition</div>
+                    </div>
+                    <div class="action-item">
+                        <div class="action-title">Design a tool prototype</div>
+                        <div class="action-desc">Apply new thinking</div>
+                    </div>
+                </div>
+                <div class="action-column">
+                    <h4>This Month</h4>
+                    <div class="action-item">
+                        <div class="action-title">Complete AI-assisted project</div>
+                        <div class="action-desc">End-to-end workflow</div>
+                    </div>
+                    <div class="action-item">
+                        <div class="action-title">Write 2 AI product analyses</div>
+                        <div class="action-desc">Deep thinking output</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
