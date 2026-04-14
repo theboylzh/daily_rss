@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
 from ai_analyzer_v3 import AIAnalyzerV3
-from report_builder import ReportBuilder
+from daily_report_builder import DailyReportBuilder
 
 
 class DailyReportService:
@@ -9,7 +9,7 @@ class DailyReportService:
 
     def __init__(self):
         self.ai_analyzer = AIAnalyzerV3()
-        self.report_builder = ReportBuilder()
+        self.report_builder = DailyReportBuilder()
 
     def build(self, filter_payload: Dict[str, Any], raw_news_count: Optional[int] = None) -> Dict[str, Any]:
         report = self.ai_analyzer.analyze_daily_report_v3(
@@ -18,7 +18,7 @@ class DailyReportService:
         )
         if report:
             return report
-        return self.report_builder.build_daily_report(
+        return self.report_builder.build(
             filter_payload,
             raw_news_count=raw_news_count,
         )

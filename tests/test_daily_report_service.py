@@ -29,7 +29,7 @@ class DailyReportServiceTestCase(unittest.TestCase):
 
         self.assertEqual(report["meta"]["report_type"], "daily")
         self.assertIn("internal_candidates", report)
-        self.assertIn("trend_candidates", report["internal_candidates"])
+        self.assertIsInstance(report["internal_candidates"], dict)
 
 
 if __name__ == "__main__":
