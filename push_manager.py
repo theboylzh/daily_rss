@@ -1,12 +1,15 @@
 import os
 import json
 import smtplib
+import re
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, List
 from config import settings
+from storage_manager import StorageManager
+from v3_email_renderer import render_email
 
 
 class PushManager:
@@ -16,18 +19,35 @@ class PushManager:
         self.email_password = settings.EMAIL_PASSWORD
         self.email_smtp_server = settings.EMAIL_SMTP_SERVER
         self.email_smtp_port = settings.EMAIL_SMTP_PORT
+        self.storage = StorageManager()
     
     def send_daily_analysis(self, analysis: Dict[str, Any]):
         """发送每日分析报告"""
         if not analysis:
             print("无分析报告可发送")
             return False
-        
+
         print("开始发送每日分析报告...")
-        
-        # 生成邮件内容
-        subject = f"每日新闻分析报告 - {analysis['date']}"
-        html_content = self._generate_html_content(analysis)
+
+        # 生成邮件主题（兼容 V1 和 V2 格式）
+        if 'date' in analysis:
+            subject = f"News Daily - {analysis['date']}"
+        elif 'summary' in analysis:
+            # V2 格式，使用当前日期
+            subject = f"News Daily - {datetime.now().strftime('%Y-%m-%d')}"
+        else:
+            # V1 格式，尝试从 first_layer 提取日期
+            subject = f"News Daily - {datetime.now().strftime('%Y-%m-%d')}"
+
+        # 判断是 V3 / V2 / V1 格式
+        if 'meta' in analysis and 'signal_interpretation' in analysis:
+            date_value = analysis.get("meta", {}).get("date", datetime.now().strftime('%Y-%m-%d'))
+            subject = f"News Daily V3 - {date_value}"
+            html_content = self._generate_v3_daily_html_content(analysis)
+        elif 'summary' in analysis:
+            html_content = self._generate_v2_html_content(analysis)
+        else:
+            html_content = self._generate_html_content(analysis)
         
         # 发送邮件
         try:
@@ -257,14 +277,21 @@ class PushManager:
         try:
             # 获取当前日期的新闻文件
             today = datetime.now().strftime('%Y-%m-%d')
-            news_file = os.path.join('data', 'news', f'{today}.json')
-            
-            if not os.path.exists(news_file):
-                return '<p>暂无新闻数据</p>'
-            
-            # 加载新闻数据
-            with open(news_file, 'r', encoding='utf-8') as f:
-                news_items = json.load(f)
+            filter_news_file = self.storage.get_filter_news_path(today)
+            raw_news_file = self.storage.get_raw_news_path(today)
+
+            news_items = []
+            if self.storage.exists(filter_news_file):
+                payload = self.storage.read_json(filter_news_file, default={})
+                news_items = payload.get("news", []) if isinstance(payload, dict) else []
+            elif self.storage.exists(raw_news_file):
+                payload = self.storage.read_json(raw_news_file, default={})
+                news_items = payload.get("news", []) if isinstance(payload, dict) else []
+            else:
+                legacy_news_file = os.path.join('data', 'news', f'{today}.json')
+                if os.path.exists(legacy_news_file):
+                    with open(legacy_news_file, 'r', encoding='utf-8') as f:
+                        news_items = json.load(f)
             
             if not news_items:
                 return '<p>暂无新闻数据</p>'
@@ -283,6 +310,24 @@ class PushManager:
         except Exception as e:
             print(f"生成新闻列表失败: {e}")
             return '<p>生成新闻列表失败</p>'
+
+    def _generate_v3_daily_html_content(self, report: Dict[str, Any]) -> str:
+        """Generate V3 HTML email content using the new Figma-designed template."""
+        # 获取新闻映射（用于引用文章）
+        meta = report.get("meta", {})
+        date_str = meta.get("date", datetime.now().strftime("%Y-%m-%d"))
+
+        # 从 filter_news 获取新闻详情
+        news_map = {}
+        try:
+            filter_payload = self.storage.read_json(self.storage.get_filter_news_path(date_str), default={})
+            for news in filter_payload.get("news", []):
+                news_map[news["id"]] = news
+        except Exception as e:
+            print(f"加载新闻映射失败: {e}")
+
+        # 使用新的渲染器
+        return render_email(report, news_map)
     
     def _send_email(self, subject: str, html_content: str):
         """发送邮件"""
@@ -303,6 +348,356 @@ class PushManager:
         with smtplib.SMTP_SSL(self.email_smtp_server, self.email_smtp_port) as server:
             server.login(self.email_sender, self.email_password)
             server.sendmail(self.email_sender, self.email_receiver, msg.as_string())
+
+    def _generate_v2_html_content(self, analysis: Dict[str, Any]) -> str:
+        """生成 V2.0.0 格式的 HTML 邮件内容"""
+        # 读取模板文件
+        template_path = os.path.join(os.path.dirname(__file__), 'email_template_v2.html')
+        try:
+            with open(template_path, 'r', encoding='utf-8') as f:
+                html = f.read()
+        except FileNotFoundError:
+            print(f"模板文件未找到：{template_path}，使用备用模板")
+            html = self._get_fallback_v2_template()
+
+        # 渲染各个板块
+        html = self._render_v2_summary(html, analysis.get('summary', {}))
+        html = self._render_v2_key_news(html, analysis.get('key_news_brief', []), analysis.get('briefing', {}))
+        html = self._render_v2_news_list(html, analysis.get('briefing', {}))
+        html = self._render_v2_opinions(html, analysis.get('perspectives', []))
+        html = self._render_v2_insights(html, analysis.get('deep_analysis', []))
+        html = self._render_v2_advices(html, analysis.get('suggestions', {}))
+
+        # 替换通用变量
+        html = html.replace('{{date}}', analysis.get('date', datetime.now().strftime('%Y-%m-%d')))
+        html = html.replace('{{news_count}}', str(analysis.get('news_count', 0)))
+        html = html.replace('{{timestamp}}', analysis.get('timestamp', datetime.now().isoformat()))
+
+        return html
+
+    def _render_v2_summary(self, html: str, summary: Dict[str, Any]) -> str:
+        """渲染 Today Brief 板块"""
+        one_liner = summary.get('one_liner', '未来难料，AI 局势依旧充满变数')
+        digest = summary.get('digest', 'AI 领域动态频发，行业震动与巨头加速布局并存，同时油价上涨影响消费市场。')
+        keywords = summary.get('keywords', ['震荡', '未知', '涨价'])
+
+        # 生成关键词 HTML
+        keywords_html = ''.join([f'<span class="keyword-item">{kw}</span>' for kw in keywords[:3]])
+
+        html = html.replace('{{summary.one_liner}}', one_liner)
+        html = html.replace('{{summary.digest}}', digest)
+        html = html.replace('{{keywords_html}}', keywords_html)
+
+        return html
+
+    def _render_v2_key_news(self, html: str, key_news_brief: List[Dict], briefing: Dict[str, Any]) -> str:
+        """渲染重点新闻高亮板块 - 全部使用原始新闻标题"""
+        # 从 key_news_brief 中获取 3 个原始标题，按标签分类
+        economy_titles = []
+        tech_titles = []
+        other_titles = []
+
+        # 经济相关标签
+        economy_tags = ['经济', '金融', '商业', '市场', '政策', '行业']
+        # 科技相关标签
+        tech_tags = ['科技', '创新']
+
+        for news in key_news_brief:
+            title = news.get('title', '')
+            tags = news.get('tags', [])
+
+            # 根据标签判断类别 - 优先判断科技
+            is_tech = any(tag in tech_tags for tag in tags)
+            is_economy = any(tag in economy_tags for tag in tags)
+
+            if is_tech:
+                tech_titles.append(title)
+            elif is_economy:
+                economy_titles.append(title)
+            else:
+                other_titles.append(title)
+
+        # 确保每个类别至少有 1 个标题
+        if not economy_titles:
+            # 从其他新闻中借一个
+            if other_titles:
+                economy_titles.append(other_titles.pop(0))
+            elif len(tech_titles) > 1:
+                economy_titles.append(tech_titles.pop())
+            elif key_news_brief:
+                economy_titles = [key_news_brief[0].get('title', '暂无经济新闻')]
+
+        if not tech_titles:
+            if other_titles:
+                tech_titles.append(other_titles.pop(0))
+            elif key_news_brief:
+                tech_titles = [key_news_brief[-1].get('title', '暂无科技新闻')]
+
+        # 分配标题到邮件模板（3 个位置：1 经济 + 2 科技）
+        highlight_economy = economy_titles[0]
+        highlight_tech_1 = tech_titles[0] if tech_titles else '暂无科技新闻'
+        # 科技 2 优先从科技中选，没有则从其他中借
+        if len(tech_titles) > 1:
+            highlight_tech_2 = tech_titles[1]
+        elif other_titles:
+            highlight_tech_2 = other_titles[0]
+        elif len(economy_titles) > 1:
+            highlight_tech_2 = economy_titles[1]
+        else:
+            highlight_tech_2 = highlight_tech_1  # 重复也没办法
+
+        html = html.replace('{{highlight_economy}}', highlight_economy)
+        html = html.replace('{{highlight_tech_1}}', highlight_tech_1)
+        html = html.replace('{{highlight_tech_2}}', highlight_tech_2)
+
+        return html
+
+    def _render_v2_news_list(self, html: str, briefing: Dict[str, Any]) -> str:
+        """渲染新闻列表板块 - 使用 AI 生成的 briefing 摘要文本"""
+        try:
+            # 从 briefing 中获取 AI 生成的四类摘要
+            politics = briefing.get('politics', '暂无政治新闻')
+            economy = briefing.get('economy', '暂无经济新闻')
+            industry = briefing.get('industry', '暂无行业新闻')
+            tech = briefing.get('tech', '暂无科技新闻')
+
+            # 将摘要文本转换为 HTML 段落格式
+            # AI 输出的摘要是连续文本，可能有句号分隔，按句号拆分成段落
+            def text_to_paragraphs(text):
+                # 按中文句号拆分
+                sentences = text.split('。')
+                paragraphs = []
+                current_para = []
+                for sent in sentences:
+                    sent = sent.strip()
+                    if sent:
+                        current_para.append(sent)
+                        # 每 2-3 句组成一个段落
+                        if len(current_para) >= 2:
+                            paragraphs.append('。'.join(current_para) + '。')
+                            current_para = []
+                if current_para:
+                    paragraphs.append('。'.join(current_para) + '。')
+                # 转换为 HTML
+                return ''.join([f'<p>{p}</p>' for p in paragraphs if p])
+
+            html = html.replace('{{news_politics_items}}', text_to_paragraphs(politics))
+            html = html.replace('{{news_economy_items}}', text_to_paragraphs(economy))
+            html = html.replace('{{news_industry_items}}', text_to_paragraphs(industry))
+            html = html.replace('{{news_tech_items}}', text_to_paragraphs(tech))
+
+            return html
+
+        except Exception as e:
+            print(f"渲染新闻列表失败：{e}")
+            return self._fill_empty_news_list(html)
+
+    def _fill_empty_news_list(self, html: str) -> str:
+        """填充空新闻列表"""
+        empty_item = '<li>暂无新闻数据</li>'
+        html = html.replace('{{news_politics_items}}', empty_item)
+        html = html.replace('{{news_economy_items}}', empty_item)
+        html = html.replace('{{news_industry_items}}', empty_item)
+        html = html.replace('{{news_tech_items}}', empty_item)
+        return html
+
+    def _render_v2_opinions(self, html: str, perspectives: List[Dict]) -> str:
+        """渲染观点板块"""
+        if not perspectives:
+            html = html.replace('{{opinions_html}}', '<p class="body-2 text-secondary">暂无观点内容</p>')
+            return html
+
+        opinions_html = ''
+        for i, p in enumerate(perspectives[:3]):
+            opinion_html = f'''
+            <div class="opinion-item">
+                <p class="opinion-number">{str(i+1).zfill(2)}</p>
+                <p class="opinion-title">{p.get('title', '观点标题')}</p>
+                <p class="opinion-description">{p.get('description', '观点描述')}</p>
+                <div class="opinion-quotes">
+            '''
+            # 添加引用
+            refs = p.get('references', [])
+            for ref in refs[:2]:
+                opinion_html += f'''
+                <div class="quote-item">
+                    <div class="quote-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M12 4L14 6L10 10L14 14L12 16L6 10L12 4Z" fill="#B88459"/>
+                        </svg>
+                    </div>
+                    <p class="quote-text">{ref.get('title', '引用标题')}</p>
+                </div>
+                '''
+            opinion_html += '</div></div>'
+            opinions_html += opinion_html
+
+        html = html.replace('{{opinions_html}}', opinions_html)
+        return html
+
+    def _render_v2_insights(self, html: str, deep_analysis: List[Dict]) -> str:
+        """渲染关键分析板块"""
+        if not deep_analysis:
+            html = html.replace('{{insights_html}}', '<p class="body-2 text-secondary">暂无分析内容</p>')
+            return html
+
+        insights_html = ''
+        for a in deep_analysis[:3]:
+            tags = a.get('tags', ['行业'])
+            category = tags[0] if tags else '行业'
+
+            insight_html = f'''
+            <div class="insight-item">
+                <p class="insight-category">{category}</p>
+                <p class="insight-title">{a.get('title', '分析标题')}</p>
+
+                <table class="insight-content-row" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="insight-subtitle">
+                            <p class="insight-subtitle-number">01</p>
+                            <p class="insight-subtitle-label">客观事实</p>
+                        </td>
+                        <td class="insight-subtitle-content body-2">{a.get('facts', '暂无事实描述')}</td>
+                    </tr>
+                </table>
+
+                <table class="insight-content-row" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="insight-subtitle">
+                            <p class="insight-subtitle-number">02</p>
+                            <p class="insight-subtitle-label">整体观点</p>
+                        </td>
+                        <td class="insight-subtitle-content body-2">{a.get('viewpoint', '暂无观点')}</td>
+                    </tr>
+                </table>
+
+                <table class="insight-content-row" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="insight-subtitle">
+                            <p class="insight-subtitle-number">03</p>
+                            <p class="insight-subtitle-label">发生原因</p>
+                        </td>
+                        <td class="insight-subtitle-content body-2">{a.get('causes', '暂无原因分析')}</td>
+                    </tr>
+                </table>
+
+                <table class="insight-content-row" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="insight-subtitle">
+                            <p class="insight-subtitle-number">04</p>
+                            <p class="insight-subtitle-label">后续预测</p>
+                        </td>
+                        <td class="insight-subtitle-content body-2">{a.get('prediction', '暂无预测')}</td>
+                    </tr>
+                </table>
+
+                <table class="insight-content-row" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td class="insight-subtitle">
+                            <p class="insight-subtitle-number">05</p>
+                            <p class="insight-subtitle-label">个体建议</p>
+                        </td>
+                        <td class="insight-subtitle-content body-2">{a.get('advice', '暂无建议')}</td>
+                    </tr>
+                </table>
+            </div>
+            '''
+            insights_html += insight_html
+
+        html = html.replace('{{insights_html}}', insights_html)
+        return html
+
+    def _render_v2_advices(self, html: str, suggestions: Dict[str, Any]) -> str:
+        """渲染建议板块"""
+        if not suggestions:
+            html = html.replace('{{advices_html}}', '<p class="body-2 text-secondary">暂无建议内容</p>')
+            return html
+
+        advices_html = ''
+
+        # 思维启发
+        thinking = suggestions.get('thinking', {})
+        advices_html += self._render_single_advice(
+            '思维启发',
+            thinking.get('title', '暂无'),
+            thinking.get('content', '暂无内容')
+        )
+
+        # 投资建议
+        investment = suggestions.get('investment', {})
+        advices_html += self._render_single_advice(
+            '投资建议',
+            investment.get('title', '暂无'),
+            investment.get('content', '暂无内容')
+        )
+
+        # 个人提升
+        self_improvement = suggestions.get('self_improvement', {})
+        advices_html += self._render_single_advice(
+            '个人提升',
+            self_improvement.get('title', '暂无'),
+            self_improvement.get('content', '暂无内容')
+        )
+
+        # 机遇风险
+        opp_risk = suggestions.get('opportunities_risks', {})
+        advices_html += self._render_single_advice(
+            '机遇风险',
+            opp_risk.get('title', '暂无'),
+            opp_risk.get('content', '暂无内容')
+        )
+
+        html = html.replace('{{advices_html}}', advices_html)
+        return html
+
+    def _render_single_advice(self, category: str, title: str, content: str) -> str:
+        """渲染单个建议项 - 支持 Markdown 加粗转换"""
+        # 将换行符转换为 <p> 标签
+        content_paragraphs = content.split('\n')
+
+        # 处理每个段落：转换 Markdown 加粗 (**text**) 为 HTML <strong>
+        def markdown_to_html(text):
+            # 转换 **加粗** 为 <strong>
+            text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
+            # 转换 *加粗* 为 <strong>（备用）
+            text = re.sub(r'\*(.*?)\*', r'<strong>\1</strong>', text)
+            return text
+
+        content_html = ''
+        for p in content_paragraphs:
+            p = p.strip()
+            if p:
+                html_p = markdown_to_html(p)
+                content_html += f'<p>{html_p}</p>'
+
+        return f'''
+        <table class="advice-item" cellpadding="0" cellspacing="0">
+            <tr>
+                <td class="advice-category">{category}</td>
+                <td class="advice-content">
+                    <p class="advice-title">{title}</p>
+                    <div class="advice-description body-2">{content_html}</div>
+                </td>
+            </tr>
+        </table>
+        '''
+
+    def _get_fallback_v2_template(self) -> str:
+        """备用 V2 模板"""
+        return '''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>News Daily</title>
+</head>
+<body>
+    <h1>News Daily</h1>
+    <p>日期：{{date}}</p>
+    <p>新闻数量：{{news_count}}</p>
+    <hr>
+    <p>模板加载失败，请使用完整模板</p>
+</body>
+</html>'''
 
 
 if __name__ == "__main__":

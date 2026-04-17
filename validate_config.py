@@ -111,7 +111,7 @@ def check_file_structure():
         "config.py",
         "subscription_manager.py",
         "news_fetcher.py",
-        "ai_analyzer.py",
+        "ai_analyzer_v2.py",
         "push_manager.py",
         "requirements.txt",
         ".env.example",
