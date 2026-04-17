@@ -34,3 +34,14 @@ build/
 
 # Trae IDE 文件夹
 .trae/
+
+# V3 测试输出和草稿
+test_output*.html
+test_email_renderer.py
+design/
+docs/design-system.md
+docs/designs/
+docs/logs/
+
+# Claude 本地设置
+.claude/settings.json
