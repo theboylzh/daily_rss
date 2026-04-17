@@ -24,11 +24,7 @@ class AIAnalyzerV3:
         "policy_and_ethics",
     ]
 
-    DEFAULT_DIMENSION_VALUE = {
-        "summary": "今日无显著动态",
-        "brief": "今日无显著动态",
-        "related_news": [],
-    }
+    DEFAULT_DIMENSION_VALUE = "今日无显著动态"
 
     def __init__(self):
         self.api_url = settings.AI_API_URL
@@ -82,7 +78,7 @@ class AIAnalyzerV3:
         fallback_report: Dict[str, Any],
     ) -> Optional[Dict[str, Any]]:
         prompt = f"""
-任务：基于给定的 filter_news，为 Trend Radar 生成“信号解读”模块。
+任务：基于给定的 filter_news，为 Trend Radar 生成"信号解读"模块。
 
 输出要求：
 1. 只能输出 JSON，不要 Markdown，不要解释。
@@ -90,38 +86,30 @@ class AIAnalyzerV3:
 {{
   "main_conclusion": "今日最重要的结论",
   "why_it_matters": "为什么重要",
-  "top_signals": [
+  "top_events": [
     {{
-      "title": "战略信号标题",
-      "event": "发生了什么",
-      "signal": "真正说明了什么变化",
-      "for_me": "对我意味着什么",
-      "score": 9,
-      "supporting_news": [
-        {{
-          "news_id": "news_xxx",
-          "title": "标题",
-          "source": "来源",
-          "url": "https://..."
-        }}
-      ]
+      "title": "事件标题",
+      "description": "5W1H 描述事件关键",
+      "so_what": "对用户的具体影响或行动建议"
     }}
   ],
   "six_dimension_briefs": {{
-    "model_and_capability": {{"summary": "一句判断", "brief": "一段简报", "related_news": []}},
-    "ai_product_and_interaction": {{"summary": "一句判断", "brief": "一段简报", "related_news": []}},
-    "design_and_experience": {{"summary": "一句判断", "brief": "一段简报", "related_news": []}},
-    "technology_and_platform": {{"summary": "一句判断", "brief": "一段简报", "related_news": []}},
-    "business_and_monetization": {{"summary": "一句判断", "brief": "一段简报", "related_news": []}},
-    "policy_and_ethics": {{"summary": "一句判断", "brief": "一段简报", "related_news": []}}
+    "model_and_capability": "一句话事实简报",
+    "ai_product_and_interaction": "一句话事实简报",
+    "design_and_experience": "一句话事实简报",
+    "technology_and_platform": "一句话事实简报",
+    "business_and_monetization": "一句话事实简报",
+    "policy_and_ethics": "一句话事实简报"
   }}
 }}
 
 硬性要求：
-1. top_signals 固定 3 条。
-2. six_dimension_briefs 固定 6 个字段，缺内容也要保留并写“今日无显著动态”。
-3. supporting_news 和 related_news 只能引用输入新闻中的 news_id/title/source/url。
-4. 结论必须围绕用户的判断和行动价值，而不是泛泛行业总结。
+1. top_events 固定 3 条，基于用户身份和目标筛选。
+2. top_events 的 title 必须使用新闻原标题风格，只陈述事实，不要出现"重塑"、"范式"、"演进"、"趋势"等总结性词汇。
+3. top_events 的 description 用 5W1H 讲述事件关键（何时/谁/发生了什么/为什么/如何），不要出现"模式"、"趋势"、"范式"等词。
+4. top_events 的 so_what 必须具体，不能是"值得关注"等空话。
+5. six_dimension_briefs 每个维度用一句话组合该维度下的 2-3 个事实，例如"事实 A，事实 B，事实 C"。不要做趋势判断（如"正从...转向..."）。
+6. six_dimension_briefs 某维度无内容时写"今日无显著动态"。
 
 输入新闻：
 {json.dumps(self._compact_news_for_prompt(news_items), ensure_ascii=False, indent=2)}
@@ -141,41 +129,32 @@ class AIAnalyzerV3:
         fallback_report: Dict[str, Any],
     ) -> Optional[List[Dict[str, Any]]]:
         prompt = f"""
-任务：基于信号解读和 filter_news，生成 2-3 条“深度分析”趋势。
+任务：基于信号解读和 filter_news，生成"深度分析"模块。
+本模块输出 3-5 条趋势观察（trend_observation）。
 
 输出要求：
 1. 只能输出 JSON 数组，不要 Markdown。
-2. 固定输出 2 到 3 条。
+2. 固定输出 3 到 5 条 trend_observation。
 3. 每条必须包含以下字段：
+
 [
   {{
-    "trend_name": "趋势名称",
-    "summary": "趋势概述",
-    "related_signals": ["相关信号标题1", "相关信号标题2"],
-    "repeated_patterns": ["重复模式1", "重复模式2"],
-    "drivers": ["驱动因素1", "驱动因素2"],
-    "mechanism": "变化机制",
-    "short_term_impact": "短期影响",
-    "long_term_impact": "长期影响",
-    "impact_on_me": "对我的影响",
-    "risks": ["风险1", "风险2"],
-    "opportunities": ["机会1", "机会2"],
-    "watch_points": ["观察点1", "观察点2"],
-    "supporting_news": [
-      {{
-        "news_id": "news_xxx",
-        "title": "标题",
-        "source": "来源",
-        "url": "https://..."
-      }}
-    ]
+    "type": "trend_observation",
+    "id": "obs_2026-04-15_1",
+    "title": "趋势观察标题",
+    "evidence": "观察到的现象/事件 + 这是单点事件还是模式雏形",
+    "news_ids": ["news_xxx", "news_yyy"],
+    "reasoning": "传导机制解释 + 适用条件 + 反证风险 + 验证路径",
+    "so_what_for_me": "对用户的决策影响/行动建议"
   }}
 ]
 
 硬性要求：
-1. 重点是解释趋势，不是复述新闻。
-2. supporting_news 只能引用输入新闻。
-3. related_signals 应优先引用 top_signals 的 title。
+1. 3-5 条必须覆盖不同主题（模型/产品/技术/商业/政策），避免重复。
+2. evidence 必须说明是"单点事件"还是"模式雏形"。
+3. reasoning 必须用一大段话解释传导机制（变化如何通过产品/能力/市场反馈联动），并说明适用条件、反证风险（什么情况下这个判断不成立）和验证路径（未来何时观察什么信号）。不要只说"值得关注"，要解释具体如何传导。
+4. so_what_for_me 必须是具体行动，不能是"继续关注"。
+5. news_ids 只能引用输入新闻的 id。
 
 信号解读：
 {json.dumps(signal_interpretation, ensure_ascii=False, indent=2)}
@@ -307,43 +286,31 @@ class AIAnalyzerV3:
         normalized = {
             "main_conclusion": result.get("main_conclusion") or fallback.get("main_conclusion", ""),
             "why_it_matters": result.get("why_it_matters") or fallback.get("why_it_matters", ""),
-            "top_signals": [],
+            "top_events": [],
             "six_dimension_briefs": {},
         }
 
-        signals = result.get("top_signals", [])
-        fallback_signals = fallback.get("top_signals", [])
+        # Normalize top_events
+        events = result.get("top_events", [])
+        fallback_events = fallback.get("top_events", [])
         for index in range(3):
-            source = signals[index] if index < len(signals) and isinstance(signals[index], dict) else (
-                fallback_signals[index] if index < len(fallback_signals) else {}
+            source = events[index] if index < len(events) and isinstance(events[index], dict) else (
+                fallback_events[index] if index < len(fallback_events) else {}
             )
-            fallback_source = fallback_signals[index] if index < len(fallback_signals) else {}
-            normalized["top_signals"].append({
-                "id": source.get("id") or fallback_source.get("id", ""),
-                "title": source.get("title") or fallback_source.get("title", "未命名信号"),
-                "event": source.get("event") or fallback_source.get("event", ""),
-                "signal": source.get("signal") or fallback_source.get("signal", ""),
-                "for_me": source.get("for_me") or fallback_source.get("for_me", ""),
-                "score": source.get("score") or fallback_source.get("score", 7),
-                "supporting_news": self._normalize_news_refs(
-                    source.get("supporting_news"),
-                    fallback_source.get("supporting_news", []),
-                ),
+            fallback_source = fallback_events[index] if index < len(fallback_events) else {}
+            normalized["top_events"].append({
+                "title": source.get("title") or fallback_source.get("title", "未命名事件"),
+                "description": source.get("description") or fallback_source.get("description", ""),
+                "so_what": source.get("so_what") or fallback_source.get("so_what", ""),
             })
 
+        # Normalize six_dimension_briefs
         source_dimensions = result.get("six_dimension_briefs", {})
         fallback_dimensions = fallback.get("six_dimension_briefs", {})
         for key in self.DIMENSION_KEYS:
-            item = source_dimensions.get(key, {}) if isinstance(source_dimensions, dict) else {}
+            item = source_dimensions.get(key, "") if isinstance(source_dimensions, dict) else ""
             fallback_item = fallback_dimensions.get(key, self.DEFAULT_DIMENSION_VALUE)
-            normalized["six_dimension_briefs"][key] = {
-                "summary": item.get("summary") or fallback_item.get("summary", "今日无显著动态"),
-                "brief": item.get("brief") or fallback_item.get("brief", "今日无显著动态"),
-                "related_news": self._normalize_news_refs(
-                    item.get("related_news"),
-                    fallback_item.get("related_news", []),
-                ),
-            }
+            normalized["six_dimension_briefs"][key] = item or fallback_item
         return normalized
 
     def _normalize_deep_analysis(
@@ -352,30 +319,24 @@ class AIAnalyzerV3:
         fallback: List[Dict[str, Any]],
         date_str: str,
     ) -> List[Dict[str, Any]]:
+        """Normalize deep_analysis: 3-5 trend observations."""
         normalized = []
-        source = result[:3] if result else []
-        if len(source) < 2:
-            source = source + fallback[: 2 - len(source)]
-        for index, item in enumerate(source[:3], start=1):
+        source = result[:5] if result else []
+        # 确保至少 3 条
+        while len(source) < 3 and len(fallback) > 0:
+            source.append(fallback[len(source)] if len(source) < len(fallback) else {})
+
+        for index, item in enumerate(source[:5], start=1):
             fallback_item = fallback[index - 1] if index - 1 < len(fallback) else {}
+            news_ids = item.get("news_ids") or fallback_item.get("news_ids", [])
             normalized.append({
-                "id": fallback_item.get("id") or f"daily_trend_{date_str}_{index}",
-                "trend_name": item.get("trend_name") or fallback_item.get("trend_name", f"趋势 {index}"),
-                "summary": item.get("summary") or fallback_item.get("summary", ""),
-                "related_signals": self._ensure_list(item.get("related_signals"))[:3],
-                "repeated_patterns": self._prefer_list(item.get("repeated_patterns"), fallback_item.get("repeated_patterns", [])),
-                "drivers": self._prefer_list(item.get("drivers"), fallback_item.get("drivers", [])),
-                "mechanism": item.get("mechanism") or fallback_item.get("mechanism", ""),
-                "short_term_impact": item.get("short_term_impact") or fallback_item.get("short_term_impact", ""),
-                "long_term_impact": item.get("long_term_impact") or fallback_item.get("long_term_impact", ""),
-                "impact_on_me": item.get("impact_on_me") or fallback_item.get("impact_on_me", ""),
-                "risks": self._ensure_list(item.get("risks"))[:3],
-                "opportunities": self._ensure_list(item.get("opportunities"))[:3],
-                "watch_points": self._prefer_list(item.get("watch_points"), fallback_item.get("watch_points", [])),
-                "supporting_news": self._normalize_news_refs(
-                    item.get("supporting_news"),
-                    fallback_item.get("supporting_news", []),
-                ),
+                "type": "trend_observation",
+                "id": fallback_item.get("id") or f"obs_{date_str}_{index}",
+                "title": item.get("title") or fallback_item.get("title", f"趋势观察 {index}"),
+                "evidence": item.get("evidence") or fallback_item.get("evidence", ""),
+                "news_ids": news_ids if isinstance(news_ids, list) else [],
+                "reasoning": item.get("reasoning") or fallback_item.get("reasoning", ""),
+                "so_what_for_me": item.get("so_what_for_me") or fallback_item.get("so_what_for_me", ""),
             })
         return normalized
 

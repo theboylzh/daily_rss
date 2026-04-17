@@ -1,8 +1,8 @@
 # Trend Radar V3 Analysis Output And Prompt Architecture
 
 **创建日期**: 2026-04-12
-**更新日期**: 2026-04-14
-**版本**: V3.1
+**更新日期**: 2026-04-15
+**版本**: V3.5
 **状态**: 当前基线
 
 ---
@@ -75,11 +75,11 @@ daily report 输出结构如下：
 
 ```json
 {
-  "meta": {},
-  "signal_interpretation": {},
-  "deep_analysis": [],
-  "action_suggestions": {},
-  "internal_candidates": {}
+  “meta”: {},
+  “signal_interpretation”: {},
+  “deep_analysis”: [],
+  “action_suggestions”: {},
+  “internal_candidates”: {}
 }
 ```
 
@@ -89,15 +89,31 @@ daily report 输出结构如下：
 
 1. 今天最重要的结论是什么
 2. 为什么重要
-3. 哪些是 top signals
+3. 哪些是 top events（基于用户身份和目标筛选的 3 个最重要事件）
+
+字段说明：
+- `main_conclusion`: 今日最重要结论（1 句话）
+- `why_it_matters`: 为什么重要（1-2 段）
+- `top_events`: 3 个事件，每个包含 title（标题）、description（5W1H 描述）、so_what（对用户的具体影响）
+- `six_dimension_briefs`: 6 个维度的一句判断，直接是字符串
 
 ### `deep_analysis`
 
-回答：
+输出 3-5 条趋势观察（trend_observation）。
 
-1. 这些新闻背后对应的更高层变化是什么
-2. 这些变化为什么值得跟踪
-3. 对用户的影响是什么
+每条包含 5 个字段：
+- `title`: 趋势观察标题
+- `evidence`: 观察到的现象/事件 + 这是单点事件还是模式雏形
+- `news_ids`: 支撑新闻 ID 列表
+- `reasoning`: 机制解释 + 适用条件 + 反证风险 + 验证路径（一大段，不分拆）
+- `so_what_for_me`: 对用户的决策影响/行动建议
+
+**逻辑链**：证据 → 机制 → 条件 → 反证 → 验证 → 行动
+
+**重要**：
+1. 3-5 条必须覆盖不同主题（模型/产品/技术/商业/政策）
+2. reasoning 必须包含传导机制，不能只说”值得关注”
+3. so_what_for_me 必须是具体行动，不能是”继续关注”
 
 ### `action_suggestions`
 
@@ -114,7 +130,7 @@ daily report 输出结构如下：
 1. `trend_candidates`
 2. `opportunity_candidates`
 
-它不再承担“流向下一层系统”的职责。
+它不再承担”流向下一层系统”的职责。
 
 ---
 

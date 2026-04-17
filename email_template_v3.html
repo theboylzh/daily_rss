@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trend Radar V3 - Email Template (800px)</title>
+    <style>
+        /* Reset styles */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+
+        body {
+            margin: 0;
+            width: 100% !important;
+            background-color: #0D0D0F;
+            font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+        }
+
+        /* Container - 800px fixed width with responsive fallback */
+        .email-container {
+            max-width: 800px;
+            width: 100%;
+            margin: 0 auto;
+            background-color: #0D0D0F;
+        }
+
+        /* Link styles */
+        a {
+            color: #3D7092;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body style="background-color: #0D0D0F; font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;">
+
+    <!-- Email Container -->
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 800px; margin: 0 auto; background-color: #0D0D0F;">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="800" style="background-color: #0D0D0F; position: relative;">
+
+                    <!-- ========== Header Background Layer ========== -->
+                    <!-- 背景 600x537 靠右靠上，绝对定位，不影响布局 -->
+                    <tr style="height: 0; line-height: 0; font-size: 0;">
+                        <td style="height: 0; line-height: 0; font-size: 0; padding: 0; margin: 0;">
+                            <img src="{{header_bg}}" width="600" height="537" alt=""
+                                 style="display: block; width: 600px; height: 537px; border: 0; margin: 0; padding: 0; position: absolute; right: 0; top: 0; z-index: 0;">
+                        </td>
+                    </tr>
+
+                    <!-- ========== Module 0: Header ========== -->
+                    <!-- Figma: node-id=40-6, padding: 48px -->
+                    <tr style="position: relative; z-index: 1;">
+                        <td style="padding: 48px;">
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <!-- Left: Date -->
+                                    <td align="left" style="width: 33%;">
+                                        <p style="color: #787878; font-size: 16px; font-weight: 400; margin: 0;">
+                                            {{meta.date}} {{meta.day_of_week}}
+                                        </p>
+                                    </td>
+                                    <!-- Center: Trend Radar -->
+                                    <td align="center" style="width: 34%;">
+                                        <p style="color: #F5F5F5; font-size: 36px; font-weight: 500; margin: 0; font-family: 'PingFang SC', -apple-system, BlinkMacSystemFont, sans-serif;">
+                                            Trend Radar
+                                        </p>
+                                    </td>
+                                    <!-- Right: Article count -->
+                                    <td align="right" style="width: 33%;">
+                                        <p style="color: #787878; font-size: 16px; font-weight: 400; margin: 0;">
+                                            {{meta.filtered_count}} Articles
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- ========== Module 1: Key Insight ========== -->
+                    <!-- Figma: node-id=40-20, pt-180px px-48px, title 40px -->
+                    <tr>
+                        <td style="padding-top: 180px; padding-left: 48px; padding-right: 48px;">
+                            <!-- Section Label: 关键洞察 -->
+                            <p style="color: #787878; font-size: 14px; font-weight: 500; margin: 0 0 8px 0;">
+                                关键洞察
+                            </p>
+                            <!-- Main Conclusion: 40px, max-width 720px -->
+                            <p style="color: #F5F5F5; font-size: 40px; font-weight: 500; margin: 0 0 24px 0; max-width: 720px; line-height: 1.0;">
+                                {{signal_interpretation.main_conclusion}}
+                            </p>
+                        </td>
+                    </tr>
+                    <!-- Why It Matters: 在同一 px-48px 区域 -->
+                    <tr>
+                        <td style="padding-left: 48px; padding-right: 48px; padding-bottom: 136px;">
+                            <p style="color: #787878; font-size: 14px; font-weight: 400; margin: 0 0 8px 0;">
+                                这为什么重要
+                            </p>
+                            <p style="color: #B0B0B0; font-size: 14px; font-weight: 400; margin: 0; max-width: 670px; line-height: 1.5;">
+                                {{signal_interpretation.why_it_matters}}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- ========== Module 2: Top Events ========== -->
+                    <!-- Figma: node-id=40-28, px-48px, 标题和事件列表竖向排列 -->
+                    <tr>
+                        <td style="padding-left: 48px; padding-right: 48px; padding-bottom: 136px;">
+                            {{top_events_html}}
+                        </td>
+                    </tr>
+
+                    <!-- ========== Module 3: Six Dimensions Brief ========== -->
+                    <!-- Figma: node-id=40-63, 改为上下堆叠，每行一个维度 -->
+                    <tr>
+                        <td style="padding-bottom: 136px;">
+                            <!-- Section Title -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="padding-left: 48px; padding-right: 48px; padding-bottom: 12px;">
+                                        <p style="color: #787878; font-size: 18px; font-weight: 500; margin: 0;">
+                                            6D Brief
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left: 48px; padding-right: 48px; padding-bottom: 24px;">
+                                        <p style="color: #F5F5F5; font-size: 32px; font-weight: 500; margin: 0;">
+                                            6维简报
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            <!-- Dimensions: 上下堆叠 -->
+                            {{six_dimensions_html}}
+                        </td>
+                    </tr>
+
+                    <!-- ========== Module 4: Trend Watch (Deep Analysis) ========== -->
+                    <!-- Figma: node-id=40-89 -->
+                    <tr>
+                        <td style="padding-bottom: 136px;">
+                            <!-- Section Title -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="padding-left: 48px; padding-right: 48px; padding-bottom: 12px;">
+                                        <p style="color: #787878; font-size: 18px; font-weight: 500; margin: 0;">
+                                            trend watch
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-left: 48px; padding-right: 48px; padding-bottom: 49px;">
+                                        <p style="color: #F5F5F5; font-size: 32px; font-weight: 500; margin: 0;">
+                                            趋势观察
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            <!-- Trend Items -->
+                            {{trend_watch_html}}
+                        </td>
+                    </tr>
+
+                    <!-- ========== Module 5: Action Suggestions ========== -->
+                    <!-- Figma: node-id=40-154, px-48px, 三列等宽gap-12px -->
+                    <tr>
+                        <td style="padding: 48px;">
+                            <!-- Section Title -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <td style="padding-bottom: 12px;">
+                                        <p style="color: #787878; font-size: 18px; font-weight: 500; margin: 0;">
+                                            Actions
+                                        </p>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding-bottom: 40px;">
+                                        <p style="color: #F5F5F5; font-size: 32px; font-weight: 500; margin: 0;">
+                                            行动建议
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            <!-- Actions Grid: 三列等宽 -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                <tr>
+                                    <!-- Today Column -->
+                                    <td width="33%" style="padding-right: 6px;">
+                                        {{actions_today_html}}
+                                    </td>
+                                    <!-- This Week Column -->
+                                    <td width="33%" style="padding-left: 6px; padding-right: 6px;">
+                                        {{actions_this_week_html}}
+                                    </td>
+                                    <!-- This Month Column -->
+                                    <td width="33%" style="padding-left: 6px;">
+                                        {{actions_this_month_html}}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, Any, List
 from config import settings
 from storage_manager import StorageManager
+from v3_email_renderer import render_email
 
 
 class PushManager:
@@ -311,170 +312,22 @@ class PushManager:
             return '<p>生成新闻列表失败</p>'
 
     def _generate_v3_daily_html_content(self, report: Dict[str, Any]) -> str:
+        """Generate V3 HTML email content using the new Figma-designed template."""
+        # 获取新闻映射（用于引用文章）
         meta = report.get("meta", {})
-        signals = report.get("signal_interpretation", {})
-        deep_analysis = report.get("deep_analysis", [])
-        actions = report.get("action_suggestions", {})
+        date_str = meta.get("date", datetime.now().strftime("%Y-%m-%d"))
 
-        def render_supporting_news(items):
-            if not items:
-                return "<p class='muted'>暂无支撑新闻</p>"
-            html = "<ul>"
-            for item in items:
-                title = item.get("title", "未命名新闻")
-                url = item.get("url", "#")
-                source = item.get("source", "")
-                html += f"<li><a href=\"{url}\" target=\"_blank\">{title}</a> <span class='muted'>{source}</span></li>"
-            html += "</ul>"
-            return html
+        # 从 filter_news 获取新闻详情
+        news_map = {}
+        try:
+            filter_payload = self.storage.read_json(self.storage.get_filter_news_path(date_str), default={})
+            for news in filter_payload.get("news", []):
+                news_map[news["id"]] = news
+        except Exception as e:
+            print(f"加载新闻映射失败: {e}")
 
-        top_signals_html = ""
-        for signal in signals.get("top_signals", []):
-            top_signals_html += f"""
-            <section class="card">
-                <h3>{signal.get('title', '未命名信号')}</h3>
-                <p><strong>发生了什么：</strong>{signal.get('event', '')}</p>
-                <p><strong>这代表什么：</strong>{signal.get('signal', '')}</p>
-                <p><strong>对我意味着什么：</strong>{signal.get('for_me', '')}</p>
-                {render_supporting_news(signal.get('supporting_news', []))}
-            </section>
-            """
-
-        dimensions_html = ""
-        for name, detail in signals.get("six_dimension_briefs", {}).items():
-            dimensions_html += f"""
-            <section class="card card-compact">
-                <h4>{name}</h4>
-                <p><strong>{detail.get('summary', '')}</strong></p>
-                <p>{detail.get('brief', '')}</p>
-            </section>
-            """
-
-        trends_html = ""
-        for trend in deep_analysis:
-            trends_html += f"""
-            <section class="card">
-                <h3>{trend.get('trend_name', '未命名趋势')}</h3>
-                <p>{trend.get('summary', '')}</p>
-                <p><strong>机制：</strong>{trend.get('mechanism', '')}</p>
-                <p><strong>短期影响：</strong>{trend.get('short_term_impact', '')}</p>
-                <p><strong>长期影响：</strong>{trend.get('long_term_impact', '')}</p>
-                <p><strong>对我：</strong>{trend.get('impact_on_me', '')}</p>
-                {render_supporting_news(trend.get('supporting_news', []))}
-            </section>
-            """
-
-        def render_actions(items):
-            if not items:
-                return "<p class='muted'>暂无建议</p>"
-            html = "<ul>"
-            for item in items:
-                html += (
-                    f"<li><strong>{item.get('target', '')}</strong>："
-                    f"{item.get('action', '')}。{item.get('purpose', '')}</li>"
-                )
-            html += "</ul>"
-            return html
-
-        return f"""
-        <!DOCTYPE html>
-        <html lang="zh-CN">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Daily RSS V3</title>
-            <style>
-                body {{
-                    margin: 0;
-                    padding: 24px;
-                    background: #f3f0e8;
-                    color: #1f2328;
-                    font-family: Georgia, 'Times New Roman', serif;
-                    line-height: 1.7;
-                }}
-                .container {{
-                    max-width: 920px;
-                    margin: 0 auto;
-                    background: #fffdf8;
-                    border: 1px solid #e7dcc7;
-                    padding: 32px;
-                }}
-                h1, h2, h3, h4 {{
-                    color: #1b1b18;
-                }}
-                h1 {{
-                    margin-top: 0;
-                    font-size: 34px;
-                }}
-                h2 {{
-                    margin-top: 32px;
-                    font-size: 22px;
-                    border-top: 1px solid #eadfcb;
-                    padding-top: 20px;
-                }}
-                .lead {{
-                    font-size: 20px;
-                }}
-                .grid {{
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                    gap: 16px;
-                }}
-                .card {{
-                    background: #fbf7ef;
-                    border: 1px solid #eadfcb;
-                    padding: 18px;
-                    margin-bottom: 16px;
-                }}
-                .card-compact {{
-                    margin-bottom: 0;
-                }}
-                .muted {{
-                    color: #6b665c;
-                    font-size: 14px;
-                }}
-                a {{
-                    color: #7a4b22;
-                    text-decoration: none;
-                }}
-                ul {{
-                    padding-left: 20px;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <h1>Daily RSS V3</h1>
-                <p class="muted">日期：{meta.get('date', '')} | 筛选新闻：{meta.get('filtered_count', 0)}</p>
-                <p class="lead">{signals.get('main_conclusion', '暂无主结论')}</p>
-                <p><strong>为什么重要：</strong>{signals.get('why_it_matters', '')}</p>
-
-                <h2>信号解读</h2>
-                {top_signals_html or "<p class='muted'>暂无信号</p>"}
-
-                <h2>六维简报</h2>
-                <div class="grid">{dimensions_html}</div>
-
-                <h2>深度分析</h2>
-                {trends_html or "<p class='muted'>暂无趋势分析</p>"}
-
-                <h2>行动建议</h2>
-                <section class="card">
-                    <h3>今天</h3>
-                    {render_actions(actions.get('today', []))}
-                </section>
-                <section class="card">
-                    <h3>本周</h3>
-                    {render_actions(actions.get('this_week', []))}
-                </section>
-                <section class="card">
-                    <h3>本月</h3>
-                    {render_actions(actions.get('this_month', []))}
-                </section>
-            </div>
-        </body>
-        </html>
-        """
+        # 使用新的渲染器
+        return render_email(report, news_map)
     
     def _send_email(self, subject: str, html_content: str):
         """发送邮件"""

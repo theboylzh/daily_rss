@@ -1,8 +1,8 @@
 # Trend Radar V3 Data Schema
 
 **创建日期**: 2026-04-14
-**更新日期**: 2026-04-14
-**版本**: V3.1
+**更新日期**: 2026-04-15
+**版本**: V3.5
 **状态**: 当前基线
 
 ---
@@ -91,42 +91,31 @@ data/
   "signal_interpretation": {
     "main_conclusion": "今日最重要结论",
     "why_it_matters": "为什么重要",
-    "top_signals": [
+    "top_events": [
       {
-        "id": "signal_2026-04-14_1",
-        "title": "信号标题",
-        "event": "发生了什么",
-        "signal": "说明了什么变化",
-        "for_me": "对我意味着什么",
-        "score": 8.8,
-        "supporting_news": []
+        "title": "事件标题",
+        "description": "5W1H 描述事件关键（何时/发生了什么/谁/为什么/如何）",
+        "so_what": "对用户的具体影响或行动建议"
       }
     ],
     "six_dimension_briefs": {
-      "model_and_capability": {"summary": "", "brief": "", "related_news": []},
-      "ai_product_and_interaction": {"summary": "", "brief": "", "related_news": []},
-      "design_and_experience": {"summary": "", "brief": "", "related_news": []},
-      "technology_and_platform": {"summary": "", "brief": "", "related_news": []},
-      "business_and_monetization": {"summary": "", "brief": "", "related_news": []},
-      "policy_and_ethics": {"summary": "", "brief": "", "related_news": []}
+      "model_and_capability": "一句判断",
+      "ai_product_and_interaction": "一句判断",
+      "design_and_experience": "一句判断",
+      "technology_and_platform": "一句判断",
+      "business_and_monetization": "一句判断",
+      "policy_and_ethics": "一句判断"
     }
   },
   "deep_analysis": [
     {
-      "id": "daily_trend_2026-04-14_1",
-      "trend_name": "趋势名称",
-      "summary": "趋势概述",
-      "related_signals": [],
-      "repeated_patterns": [],
-      "drivers": [],
-      "mechanism": "",
-      "short_term_impact": "",
-      "long_term_impact": "",
-      "impact_on_me": "",
-      "risks": [],
-      "opportunities": [],
-      "watch_points": [],
-      "supporting_news": []
+      "type": "trend_observation",
+      "id": "obs_2026-04-14_1",
+      "title": "趋势观察标题",
+      "evidence": "观察到的现象/事件 + 这是单点事件还是模式雏形",
+      "news_ids": ["news_xxx", "news_yyy"],
+      "reasoning": "机制解释（变化如何传导）+ 适用条件 + 反证风险（什么情况下判断不成立）+ 验证路径（何时观察什么信号）",
+      "so_what_for_me": "对用户的决策影响/行动建议"
     }
   ],
   "action_suggestions": {

@@ -1,282 +1,103 @@
-# Daily RSS 工具
+# Trend Radar
 
-一个简易的RSS工具，用于抓取订阅源的最新新闻，通过AI进行分析，并以美观的HTML格式推送到邮箱。
+AI 驱动的 RSS 情报日报，自动抓取、分析、推送。
 
-## 功能特性
+## 快速复用
 
-- **订阅源管理**：支持OPML导入、手动添加/删除订阅源
-- **新闻抓取**：自动抓取24小时内的最新新闻，支持去重
-- **AI分析**：使用AI模型对新闻进行分析，支持并行分析
-- **推送功能**：将分析结果以美观的HTML格式推送到邮箱
-- **自动化操作**：支持每日定时任务，通过 GitHub Actions 调度
-- **数据管理**：自动清理过期数据，保留2个月的新闻数据
+### 1. Fork 仓库
 
-## 技术栈
+点击右上角 **Fork** → 复制到你自己的 GitHub
 
-- 开发语言：Python 3.10+
-- 核心库：feedparser、requests、BeautifulSoup4、python-dotenv、schedule
-- 数据存储：JSON文件
-- 自动化：本地使用schedule库，云端使用GitHub Actions
+### 2. 配置 Secrets
 
-## 快速开始
+进入你的仓库 **Settings → Secrets → Actions**，添加：
 
-### 1. 安装依赖
+| Secret | 说明 |
+|--------|------|
+| `AI_API_KEY` | DeepSeek API Key（推荐） |
+| `EMAIL_SENDER` | 发件人邮箱 |
+| `EMAIL_RECEIVER` | 收件人邮箱 |
+| `EMAIL_PASSWORD` | 邮箱授权码（不是密码） |
+| `TAVILY_API_KEY` | Tavily API Key（可选） |
 
-```bash
-pip install -r requirements.txt
-```
+### 3. 启用 Actions
 
-### 2. 配置环境变量
+进入 **Actions** → 启用 workflow → 点击 **Run workflow** 测试
 
-复制`.env.example`文件为`.env`，并填写相关配置：
+### 4. 完成
 
-```bash
-cp .env.example .env
-```
-
-编辑`.env`文件，填写以下内容：
-
-```
-# AI配置
-AI_API_KEY="your_ai_api_key_here"
-AI_MODEL="glm-4"
-AI_API_URL="https://open.bigmodel.cn/api/mcp/text2text"
-
-# 邮箱配置
-EMAIL_SENDER="your_email@163.com"
-EMAIL_RECEIVER="theboylzh@163.com"
-EMAIL_PASSWORD="your_email_password_or_app_password"
-EMAIL_SMTP_SERVER="smtp.163.com"
-EMAIL_SMTP_PORT=465
-```
-
-### 3. 配置订阅源
-
-- **方法一**：在`config.py`的`SUBSCRIPTIONS`列表中添加订阅源URL
-- **方法二**：使用命令行添加订阅源
-
-```bash
-python main.py add <url> [name]
-```
-
-- **方法三**：将OPML文件放在`data`目录下，命名为`subscriptions.opml`
-
-### 4. 运行工具
-
-#### 手动运行每日任务
-
-```bash
-python main.py
-```
-
-#### 查看订阅源列表
-
-```bash
-python main.py list
-```
-
-#### 删除订阅源
-
-```bash
-python main.py remove <subscription_id>
-```
-
-## 部署方案
-
-### 本地部署
-
-1. 按照上述步骤配置环境
-2. 使用`schedule`库实现定时任务（可选）
-
-### 云端部署（推荐）
-
-只需 Fork 仓库并配置密钥，即可自动运行。
-
-#### 1. Fork 仓库
-
-点击仓库右上角的 **Fork** 按钮，将此项目复制到你的 GitHub 账号。
-
-#### 2. 配置密钥
-
-在你的 GitHub 仓库中，进入 **Settings → Secrets and variables → Actions**，点击 **New repository secret**，添加以下 4 个密钥：
-
-| 密钥名称 | 说明 | 获取方式 |
-|---------|------|---------|
-| `AI_API_KEY` | AI 模型 API 密钥 | 需自行申请（推荐使用 [DeepSeek](https://platform.deepseek.com/)） |
-| `EMAIL_SENDER` | 发件人邮箱 | 你自己的邮箱地址 |
-| `EMAIL_RECEIVER` | 收件人邮箱 | 接收报告的邮箱地址 |
-| `EMAIL_PASSWORD` | 邮箱授权码 | 需向邮箱服务商申请（见下方说明） |
-
-#### 3. 获取邮箱授权码
-
-大多数邮箱服务（如 163、QQ、Gmail）需要使用**授权码**而非登录密码：
-
-**163 邮箱**：设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 设置客户端授权密码
-
-**QQ 邮箱**：设置 → 账户 → 开启 SMTP 服务 → 生成授权码
-
-**Gmail**：安全性 → 应用密码 → 生成应用密码
-
-#### 4. 启用自动运行
-
-1. 进入仓库的 **Actions** 标签页
-2. 点击 **I understand my workflows, go ahead and enable them**（如出现）
-3. 点击 **Run workflow** 手动测试一次
-
-#### 5. 完成任务！
-
-等待约 1-2 分钟，检查收件箱是否收到新闻分析报告。
+每日北京时间凌晨 4:00 自动运行，醒来即可查看邮件报告。
 
 ---
 
-**定时任务时间**：每日 UTC 20:00（北京时间凌晨 4:00）自动运行
+## 本地运行
 
-> **为什么是凌晨 4 点？**
-> GitHub Actions 在北京时间 8:00 等高峰时段队列拥堵严重，可能导致 2-3 小时延迟。
-> 凌晨 4 点是使用低峰期，运行更稳定，起床后即可查看邮件报告。
+```bash
+# 安装依赖
+pip install -r requirements.txt
 
-**修改运行时间**：编辑 `.github/workflows/rss-tool.yml` 中的 `cron` 表达式
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env 填写 API 密钥
 
-| 北京时间 | cron 表达式 | 说明 |
-|---------|------------|------|
-| 凌晨 4:00 | `'0 20 * * *'` | 默认设置，避开高峰 |
-| 早上 8:00 | `'0 0 * * *'` | 原设置，可能延迟 |
-| 晚上 20:00 | `'0 12 * * *'` | 晚间报告 |
+# 运行
+python main.py
+```
+
+---
+
+## V3 邮件模板
+
+基于 Figma 设计的 800px 深色主题邮件：
+
+- **Key Insight**：主结论 + 为什么重要
+- **Top Events**：3 个关键事件卡片
+- **Six Dimensions**：6 维趋势简报
+- **Trend Watch**：深度趋势分析
+- **Actions**：今日/本周/本月行动建议
+
+---
 
 ## 项目结构
 
 ```
 daily_rss/
-├── .github/
-│   └── workflows/
-│       └── rss-tool.yml      # GitHub Actions配置
-├── data/
-│   ├── news/                 # 新闻存储目录
-│   └── analysis/
-│   │   └── daily/            # 每日分析结果
-│   └── subscriptions.json    # 订阅源配置
-├── .env.example              # 环境变量示例
-├── .gitignore                # Git忽略文件
-├── config.py                 # 配置管理
-├── subscription_manager.py   # 订阅源管理
-├── news_fetcher.py           # 新闻抓取
-├── ai_analyzer_v2.py            # AI分析
-├── push_manager.py           # 推送管理
-├── main.py                   # 主程序
-├── requirements.txt          # 依赖文件
-├── README.md                 # 项目说明
-└── PRD.md                    # 产品需求文档
+├── main.py              # 入口
+├── config.py            # 配置
+├── news_fetcher.py      # RSS 抓取
+├── ai_analyzer_v3.py    # AI 分析
+├── v3_email_renderer.py # 邮件渲染
+├── push_manager.py      # 邮件推送
+├── workflow_runner.py   # 流程编排
+└── data/
+    ├── news/            # 新闻数据
+    └── report/daily/    # 分析报告
 ```
 
-## 配置说明
+---
 
-### 核心配置（config.py）
+## 修改订阅源
 
-- `PROJECT_NAME`：项目名称
-- `DATA_DIR`：数据存储目录
-- `SUBSCRIPTION_FILE`：订阅源配置文件
-- `OPML_FILE`：OPML文件路径
-- `NEWS_DIR`：新闻存储目录
-- `NEWS_RETENTION_DAYS`：新闻保留天数（默认60天）
-- `ANALYSIS_DIR`：分析结果存储目录
-- `DAILY_ANALYSIS_DIR`：每日分析结果目录
-- `AI_API_KEY`：AI模型的API密钥
-- `AI_MODEL`：AI模型名称（默认glm-4）
-- `AI_API_URL`：AI模型的API地址
-- `EMAIL_SENDER`：发送邮件的邮箱地址
-- `EMAIL_RECEIVER`：接收邮件的邮箱地址
-- `EMAIL_PASSWORD`：发送邮件的邮箱密码
-- `EMAIL_SMTP_SERVER`：SMTP服务器地址
-- `EMAIL_SMTP_PORT`：SMTP服务器端口
-- `DAILY_SCHEDULE_TIME`：每日任务的执行时间
-- `SUBSCRIPTIONS`：订阅源列表
-
-### 环境变量（.env）
-
-环境变量会覆盖`config.py`中的默认配置，建议将敏感信息放在环境变量中。
-
-## 使用指南
-
-### 添加订阅源
+编辑 `config.py` 的 `SUBSCRIPTIONS` 列表，或使用命令：
 
 ```bash
-python main.py add https://example.com/rss "Example RSS"
-```
-
-### 删除订阅源
-
-```bash
-python main.py remove <subscription_id>
-```
-
-### 查看订阅源列表
-
-```bash
+python main.py add <rss_url> <name>
 python main.py list
+python main.py remove <id>
 ```
 
-### 手动运行每日任务
+---
 
-```bash
-python main.py
-```
+## 修改运行时间
 
-## 注意事项
+编辑 `.github/workflows/rss-tool.yml`：
 
-1. **AI API 密钥**：需要配置有效的 AI 模型 API 密钥才能进行分析
-2. **邮箱配置**：需要配置有效的邮箱信息才能发送邮件
-3. **GitHub Actions**：需要将代码上传到 GitHub 仓库并配置 Secrets
-4. **数据存储**：数据存储在 `data` 目录下，建议定期备份
-5. **API 调用限制**：注意 AI 模型的 API 调用频率和 token 消耗
-6. **运行时间延迟**：GitHub Actions 在高峰时段可能延迟 2-3 小时，建议避开高峰期
+| 北京时间 | cron |
+|---------|------|
+| 凌晨 4:00 | `'0 20 * * *'` |
+| 早上 8:00 | `'0 0 * * *'` |
 
-## 更新日志
-
-### 2026-03-01
-
-| 改动 | 说明 |
-|------|------|
-| **超时优化** | AI API 超时时间从 30-45 秒增加到 90-120 秒，大幅减少分析失败 |
-| **运行时间调整** | GitHub Actions 从北京时间 8:00 改为凌晨 4:00，避开队列高峰 |
-| **周/月分析移除** | 删除不再使用的周分析和月分析功能及相关配置 |
-| **Tavily 搜索集成** | 集成 Tavily MCP 搜索功能，可用于实时信息查询 |
-
-## 故障排除
-
-### 常见问题
-
-1. **邮件发送失败**：检查邮箱配置是否正确，特别是密码（建议使用应用密码）
-2. **AI分析失败**：检查AI API密钥是否正确，以及API调用是否达到限制
-3. **新闻抓取失败**：检查网络连接，以及订阅源URL是否有效
-4. **GitHub Actions执行失败**：检查Secrets配置是否正确，以及workflow文件是否有语法错误
-
-### 日志查看
-
-工具会生成`rss_tool.log`文件，记录运行过程中的日志信息，可用于排查问题。
-
-### 配置验证
-
-运行以下命令验证配置是否正确：
-
-```bash
-python validate_config.py
-```
-
-此脚本会检查：
-- 环境变量配置
-- 依赖项安装情况
-- 文件结构完整性
-- GitHub Actions workflow 配置
-- .gitignore 配置
-
-## 后续优化
-
-- 支持更多推送方式（如Telegram、飞书等）
-- 增加数据分析和可视化功能
-- 支持更多AI模型和分析维度
-- 优化AI分析的准确性和效率
-- 减少token消耗
-- 提高系统稳定性和容错能力
+---
 
 ## 许可证
 
